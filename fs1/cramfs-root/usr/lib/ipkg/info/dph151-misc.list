@@ -1,0 +1,5 @@
+/opt/oem/diagfiles
+/opt/oem/basic_oam.dat
+/etc/rcS.d/S06checkipconfig
+/etc/init.d/checkipconfig
+/opt/oem/ipconfig.dat

@@ -1,0 +1,26 @@
+#!/bin/bash
+#
+# Sets the reboot cause as indicated by OEM application. Exit status
+# of 0 indicates success, anything else is a failure.
+#
+REBOOT_CAUSE_OEM=/tmp/.reboot_cause_oem
+
+usage()
+{
+    echo "USAGE: $0 <causeCode|causeText> [rebootCauseText]"
+    exit 99
+}
+
+if [ $# != 1 -a $# != 2 ]; then
+    usage
+fi
+
+echo "CAUSE_OEM=$1" > $REBOOT_CAUSE_OEM
+RET=$?
+
+if [ $? = 0 -a $# = 2 ]; then
+    echo "REBOOT_CAUSE_TEXT_OEM=\"$2\"" >> $REBOOT_CAUSE_OEM
+    RET=$?
+fi
+
+exit $RET

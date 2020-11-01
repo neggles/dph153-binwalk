@@ -1,0 +1,118 @@
+#! /bin/sh
+  # \
+exec tclsh "$0" "$@"
+package require Tk
+
+proc uhex2dec32 {hexvalue} {
+   regsub -all {[^0-9a-f\.\-]} $hexvalue {} newtemp
+   set hexvalue [string trim $newtemp]
+   set hexvalue [string range $hexvalue [expr [string length $hexvalue]- 8] [expr [string length $hexvalue] - 1]]
+   return  [format "%#u" [expr "0x$hexvalue"]] } 
+
+############################################
+
+if { [llength $argv] != 1 } {
+  puts "usage: $argv0 <host>"
+  exit
+}
+
+set ::host [lindex $argv 0]
+set ::nbBitsDecInit 0
+set ::nbErrorsDecInit 0
+set ::nbBlocksDecInit 0
+set ::nbBlocksErrorsDecInit 0
+
+pack [button .b1 -text "Start Ber/Bler"]
+pack [button .b2 -text "Stop Ber/Bler"]
+pack [button .b3 -text "Reset Ber/Bler"]
+pack [button .b4 -text "Exit"]
+bind .b1 <ButtonPress> {startBerBler}
+bind .b2 <ButtonPress> {stopBerBler}
+bind .b3 <ButtonPress> {resetBerBler}
+bind .b4 <ButtonPress> {finish}
+
+proc finish {} {
+  exit
+}
+
+proc flushBer {host} {
+  set count 0
+  set buffer -1
+  while {($buffer!="") && ($count<10)} {
+    set buffer [exec $::env(PICO_DIR_PC82X8)/Toplevel/PC82x8/setup/NodeBLayer0/berReport.tcl $host]
+    after 10
+    incr count
+  }
+}
+
+proc startBerBler {} {
+  puts "Start Ber/Bler test on $::host"
+  set ::running 1
+  flushBer $::host
+  set ::initFlag 1
+  runBer
+}
+
+proc stopBerBler {} {
+  puts "Stop Ber/Bler test on $::host"
+  set ::running 0
+}
+
+proc resetBerBler {} {
+  puts "Reset Ber/Bler test on $::host"
+  set ::initFlag 1
+}
+  
+proc runBer {} {
+  if {$::running} {
+    # BER
+    set berLength -1
+    set berFunction -1
+    while {($berLength!=7) || ($berFunction!="00")} {
+      set ber [exec $::env(PICO_DIR_PC82X8)/Toplevel/PC82x8/setup/NodeBLayer0/berReport.tcl $::host]
+      set berLength [llength $ber]
+      set tmp [lindex $ber 4]
+      set berFunction [string range $tmp  6 7]
+    }
+    set nbBits [lindex $ber 5]
+    set nbErrors [lindex $ber 6]
+    set nbBitsDec [uhex2dec32 $nbBits]
+    set nbErrorsDec [uhex2dec32 $nbErrors]
+  
+    # BLER
+    set blerLength -1
+    set blerFunction -1
+    while {($blerLength!=7) || ($blerFunction!="01")} {
+      set bler [exec $::env(PICO_DIR_PC82X8)/Toplevel/PC82x8/setup/NodeBLayer0/blerReport.tcl $::host]
+      set blerLength [llength $bler]
+      set tmp [lindex $bler 4]
+      set blerFunction [string range $tmp  6 7]
+    }
+
+    set nbBlocks [lindex $bler 5]
+    set nbBlocksErrors [lindex $bler 6]
+    set nbBlocksDec [uhex2dec32 $nbBlocks]
+    set nbBlocksErrorsDec [uhex2dec32 $nbBlocksErrors]
+    
+    #Compute BER/BLER and report results
+    if {$::initFlag == 1} {
+      set ::initFlag 0
+      set ::nbBitsDecInit $nbBitsDec
+      set ::nbErrorsDecInit $nbErrorsDec
+      set ::nbBlocksDecInit $nbBlocksDec
+      set ::nbBlocksErrorsDecInit $nbBlocksErrorsDec
+    } else {
+      set nbBitsDec [expr $nbBitsDec - $::nbBitsDecInit]
+      set nbErrorsDec [expr $nbErrorsDec - $::nbErrorsDecInit]
+      set ber [format %1.6f [expr double($nbErrorsDec) / $nbBitsDec]]
+      set nbBlocksDec [expr $nbBlocksDec - $::nbBlocksDecInit]
+      set nbBlocksErrorsDec [expr $nbBlocksErrorsDec - $::nbBlocksErrorsDecInit]
+      set bler [format %1.6f [expr double($nbBlocksErrorsDec) / $nbBlocksDec]]
+      puts "Bits: $nbBitsDec Errors: $nbErrorsDec BER: $ber Blocks: $nbBlocksDec Errors: $nbBlocksErrorsDec BLER: $bler"
+    }
+        
+    after 1 runBer
+  }
+  return
+}
+

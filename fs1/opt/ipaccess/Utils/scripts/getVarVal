@@ -1,0 +1,68 @@
+#!/bin/sh
+
+# $1 file
+# $2 value identifier
+# $3 type
+# $4 number of values
+# $5 values
+SCRIPT=`basename $0`
+SET=0
+VALUES=""
+FOUND=0
+
+case "$SCRIPT" in
+    getVarVal)
+        if [ ! -f "$1" -o $# -lt 2 ]; then
+            exit 1
+        fi
+        ;;
+    setVarVal)
+        if [ ! -f "$1" -o $# -lt 5 ]; then
+            echo "Usage: $SCRIPT file valueName valueType valueCount values"
+            exit 1
+        fi
+        VALUES=`echo $5 | sed -e 's/ /\n/g'`
+        SET=1
+        ;;
+    *)
+        exit 1
+esac
+
+while read line
+do
+  if [ "$line" = "$2" ]; then
+    FOUND=1
+    read line # discard type
+    # now read specified number of entries
+    read line
+    numvalues=$line
+    cnt=0
+    while [ $cnt -lt $numvalues ]; do
+      read line
+      if [ $SET = 0 ]; then
+        echo $line
+      fi
+      let cnt+=1
+    done
+    # print new values
+    if [ $SET = 1 ]; then
+        echo $2
+        echo $3
+        echo $4
+        echo $VALUES
+    fi
+  else
+    if [ $SET = 1 ]; then
+        echo $line
+    fi
+  fi
+done < $1
+
+# didn't find existing value so add new value to end of file
+if [ $SET = 1 -a $FOUND = 0 ]; then
+    echo $2
+    echo $3
+    echo $4
+    echo $VALUES
+fi
+

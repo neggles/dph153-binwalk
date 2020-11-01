@@ -1,0 +1,110 @@
+#! /bin/bash
+#
+# loadmodules       Loads the appropriate modules in `boot'.
+#
+
+PROG="modules"
+RETVAL=0
+
+# Using Synopsys Designware hardware watchdog
+WATCHDOG_MODULE="dw_wdt"
+
+init()
+{
+    # Loop over every line in /etc/modules.
+    (cat /etc/modules; echo) | # make sure there is a LF at the end
+    while read module args
+    do
+        case "$module" in
+            \#*|"") continue ;;
+        esac
+        # echo -n "loading $module "
+        modprobe -q $module $args
+
+        # Start the watchdog if its watchdog module
+        # and set the timer to reset the counter every 5 seconds
+        if [ "$WATCHDOG_MODULE" == "$module" ]
+        then
+            watchdog -t 5 /dev/watchdog
+        fi
+    done
+
+    # Just in case a sysadmin prefers generic symbolic links in
+    # /lib/modules/boot for boot time modules we will load these modules
+    #
+    if [ -n "`modprobe -l -t boot`" ]
+    then
+        modprobe -q -a -t boot \*
+    fi
+}
+
+deinit()
+{
+    # Loop over every line in /etc/modules.
+    (cat /etc/modules; echo) | # make sure there is a LF at the end
+    while read module args
+    do
+        case "$module" in
+            \#*|"") continue ;;
+        esac
+        # echo -n "unloading $module "
+        modprobe -q -r $module
+    done
+    # fix up: ipa_debug doesnt get unloaded. driver name needs changing to 
+    # match modprobe name.
+    rmmod ipa_debug
+
+    # Just in case a sysadmin prefers generic symbolic links in
+    # /lib/modules/boot for boot time modules we will load these modules
+    #
+    if [ -n "`modprobe -l -t boot`" ]
+    then
+        modprobe -q -r -t boot \*
+    fi
+}
+
+start() {
+    echo "Loading $PROG: "
+    init
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+stop() {
+    echo "Unloading $PROG: "
+    deinit
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

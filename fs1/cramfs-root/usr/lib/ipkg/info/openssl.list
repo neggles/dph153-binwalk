@@ -1,0 +1,7 @@
+/opt/ipaccess/lib/libcrypto.so
+/opt/ipaccess/lib/libssl.so.0
+/opt/ipaccess/lib/libcrypto.so.0.9.8
+/opt/ipaccess/lib/libssl.so
+/opt/ipaccess/lib/libcrypto.so.0
+/opt/ipaccess/lib/libssl.so.0.9.8
+/usr/share/doc/openssl-0.9.8h/LICENSE

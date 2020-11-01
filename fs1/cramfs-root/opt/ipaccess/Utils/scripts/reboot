@@ -1,0 +1,191 @@
+#!/bin/bash
+#
+# script to reboot the AP
+# If an agrumnet is given and the value is "1", then perform a
+# factory reset.
+#
+
+SWDL=/opt/ipaccess/bin/swdl_client
+NUM_RETRY=5                     # number of times to try creating the lockfile
+TIMEOUT=10                      # time to wait between attempts to take lock
+SWDL_ERROR_LOCKFILE_EXISTS=29   # return error code for if the file exists
+SWDL_ERROR_NONE=0               # swdl_client return code on successfully creating lockfile
+CDR_FLASH_PATH="/var/ipaccess/logs/cdr"
+CDR_TMP_PATH="/tmp/cdr"
+CDR_FILENAME="cdrlog"
+HO_FLASH_PATH="/var/ipaccess/logs/ho"
+HO_TMP_PATH="/tmp/ho"
+HO_FILENAME="holog"
+#VERBOSE="-verbose 2"
+
+source /etc/init.d/functions
+
+export LD_LIBRARY_PATH=/lib:/usr/lib:/opt/ipaccess/lib
+
+
+# Try to mount the given Flash partition as a CRAMFS
+trymount()
+{
+    mkdir -p /tmp/tryroot
+    if mount -o ro -t cramfs $1 /tmp/tryroot 2>/dev/null
+    then
+        umount /tmp/tryroot
+        RETVAL=0
+    else
+        RETVAL=1
+    fi
+    rmdir /tmp/tryroot
+    return $RETVAL
+}
+
+factory_restore()
+{
+    #
+    # Run the OEM factory restore hook
+    #
+    [ -x /opt/oem/factoryrestore ] && /opt/oem/factoryrestore
+
+    # Ensure applications have stopped
+    /etc/init.d/startmode stop
+
+    #
+    # Erase the test certs partition,
+    # but only if one of the banks contains a CRAMFS image.
+    #
+    if trymount /dev/mtdblock5 || trymount /dev/mtdblock6
+    then
+        umount /var/ipaccess/test 2>/dev/null
+        flash_eraseall /dev/mtd13
+        log_entry "Erased Test cert"
+    else
+        log_entry "No CRAMFS bank present, NOT erasing Test cert"
+    fi
+
+    #
+    # Delete generated/modified config files.
+    # They will be recreated from defaults on reboot.
+    # Delete symlink first so apps don't rewrite cfg files as we delete them.
+    #
+    rm -fr /var/ipaccess/config
+    rm -fr /var/ipaccess/config_bank_1/*
+    rm -fr /var/ipaccess/config_bank_2/*
+
+    rm -f  /var/ipaccess/basic_oam.dat
+    rm -f  /var/ipaccess/init.dmi
+    rm -f  /var/ipaccess/ipconfig.dat
+    rm -f  /var/ipaccess/ntp.conf
+    rm -f  /var/ipaccess/nv_env.sh
+    rm -f  /var/ipaccess/opmode.sh
+    rm -f  /var/ipaccess/pki.cfg
+
+    #
+    # Erase the root account home dir
+    #
+    rm -fr /var/ipaccess/root_home
+
+    #
+    # Delete legacy stunnel config
+    #
+    rm -fr /var/ipaccess/stunnel
+
+    #
+    # Delete the CRL cache
+    #
+    rm -fr /var/ipaccess/certificate/crl/*
+
+    echo "Factory Setting Restored..."
+    log_entry "Factory Setting Restored"
+}
+
+copyLogFileAtReboot()
+{
+    FLASHPATH=$1
+    TEMPPATH=$2
+    FILE=$3
+
+    #Copy active log file from /tmp to flash
+    if [ -f "$TEMPPATH/$FILE" ]; then
+        cp $TEMPPATH/$FILE $FLASHPATH
+    fi
+
+    #Remove .backup file
+    if [ -f "$FLASHPATH/$FILE.backup" ]; then
+        rm -f $FLASHPATH/$FILE.backup
+    fi
+}
+
+rebootAp()
+{
+    # record
+    log_entry "Running shutdown script now..."
+
+    # Save the /dev/random entropy
+    /etc/init.d/random stop
+
+    #Copy CDR active file
+    copyLogFileAtReboot $CDR_FLASH_PATH $CDR_TMP_PATH $CDR_FILENAME
+    
+    #Copy HO active file
+    copyLogFileAtReboot $HO_FLASH_PATH $HO_TMP_PATH $HO_FILENAME
+
+    # Run the OEM shutdown hook
+    [ -x /opt/oem/shutdown ] && /opt/oem/shutdown $1
+
+    # tx off
+    /opt/ipaccess/bin/sdgpio_util -txifmodulation 0
+
+    # Make sure pico array is not running 
+    /opt/ipaccess/bin/sdgpio_util -shuttingDown
+    
+    # log the cause of this reboot
+    /opt/ipaccess/Utils/scripts/save_reboot_cause
+
+    # led off
+    echo 0 > /dev/leddriver
+
+    # sync file systems
+    sync
+
+    # remount writable file systems as read only
+    umount -r /var/ipaccess
+
+    # Invoke OEM reset routine
+    /usr/local/bin/hwreset $1
+}
+
+main()
+{
+    # Command line processing.
+    # reboot_option defaults to 0
+    # If factoryrestore was requested (by presence of /tmp/factoryrestore)
+    #   reboot_option is set to 1
+    # If cmdline arg present, reboot_option is set to that
+    reboot_option=0
+    [ -f /tmp/factoryrestore_flag ] && reboot_option=1
+    [ -n "$1" ] && reboot_option=$1
+
+    # create the lock file. 
+    a=0
+    while [ "$a" -lt "$NUM_RETRY" ]
+    do
+        a=$(($a+1))
+        $SWDL $VERBOSE -lockfile
+        ret=$?
+
+        if [ "$ret"+ = "$SWDL_ERROR_NONE"+ ]; then
+            # successfully created lockfile
+            break;
+        elif [ "$a" -lt "$NUM_RETRY" ]; then
+            # this isnt the last try so sleep till next try
+            sleep $TIMEOUT
+        fi
+    done
+   
+    if [ $reboot_option = 1 ]; then
+        factory_restore
+    fi
+
+    rebootAp $reboot_option
+}
+
+main $*

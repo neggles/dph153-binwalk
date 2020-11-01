@@ -1,0 +1,148 @@
+#!/bin/bash
+
+# location of compressed log file containing startup output of
+# everything within /etc/rcS.d
+CONSOLE_LOG=/var/log/rcS.d_consolelog.gz
+# console output
+TMP_LOG=/tmp/consolelog
+# location of nv_env.sh file and its helper script
+NVENV=/var/ipaccess/nv_env.sh
+SETNVENV=/opt/ipaccess/bin/setnv_env.sh
+
+# Mount the default file systems mentioned in /etc/fstab.
+mount -a
+
+# Source the PATH from /etc/profile
+source /etc/profile
+
+# done after sourcing /etc/profile so FS_VARIANT is set
+TMP_LOG_MAX=64
+if [ "${FS_VARIANT:0:3}" = "205" ]; then
+    # use smaller file size on PC202 based femto (with 64Mb RAM)
+    # to save memory
+    TMP_LOG_MAX=32
+fi
+
+echo "Running rc.sysinit" > /dev/console
+/etc/init.d/rc.sysinit
+
+# Run in a sub-shell so we can pipe output via ipalog to a log file
+(
+
+# Create root's home directory, if not already there
+if [ ! -f /var/ipaccess/root_home/.bash_profile ]
+then
+  mkdir -p /var/ipaccess/root_home
+  tar -xzf /opt/ipaccess/RootDir/root_home.tgz -C /var/ipaccess
+  sync
+fi
+
+
+# Ensure that the nv_env contains a setting for both hardening related
+# variables. If either is missing default it to the default values for
+# the booting filesystem variant.
+DEFAULT_UNHARDENED="FALSE"
+
+# Pick out the code letter for the filesystem name
+# Assumes it is the fourth character of the string
+FS_LETTER=`echo $FS_VARIANT | cut -c4`
+
+if [ "$FS_LETTER" = "A" ] ||
+   [ "$FS_LETTER" = "C" ] ||
+   [ "$FS_LETTER" = "E" ] ||
+   [ "$FS_LETTER" = "G" ] ||
+   [ "$FS_LETTER" = "I" ] ||
+   [ "$FS_LETTER" = "W" ] ||
+   [ "$FS_LETTER" = "X" ] ||
+   [ "$FS_LETTER" = "Z" ]; then
+   DEFAULT_UNHARDENED="TRUE"
+fi
+
+ENV_UPDATED=0
+# if value is unset, default it
+if [ "$ENV_VERBOSE_CONSOLE_ENABLED" = "" ]; then
+    echo "Defaulting ENV_VERBOSE_CONSOLE_ENABLED to filesystem default ($DEFAULT_UNHARDENED)"
+    $SETNVENV ENV_VERBOSE_CONSOLE_ENABLED $DEFAULT_UNHARDENED
+    # ensure getty is in the correct state
+    killall startgetty
+    ENV_UPDATED=1
+fi
+if [ "$ENV_FIREWALL_DISABLED" = "" ]; then
+    echo "Defaulting ENV_FIREWALL_DISABLED to filesystem default ($DEFAULT_UNHARDENED)"
+    $SETNVENV ENV_FIREWALL_DISABLED $DEFAULT_UNHARDENED
+    ENV_UPDATED=1
+fi
+
+if [ $ENV_UPDATED = 1 ]; then
+    source $NVENV
+fi
+
+# U-Boot hardening related variables are derived from the nv_env
+# variables - need the check these each boot to ensure consistency.
+UBOOT_SILENT=`fw_printenv -n silent`
+UBOOT_BOOTDELAY=`fw_printenv -n bootdelay`
+UBOOT_CONSOLEDEV=`fw_printenv -n consoledev`
+
+if [ "$ENV_VERBOSE_CONSOLE_ENABLED" = "TRUE" ]; then
+    UBOOT_EXPECTED_SILENT=""
+    UBOOT_EXPECTED_BOOTDELAY="5"
+    UBOOT_EXPECTED_CONSOLEDEV="ttyS0"
+else
+    UBOOT_EXPECTED_SILENT="on"
+    UBOOT_EXPECTED_BOOTDELAY="0"
+    UBOOT_EXPECTED_CONSOLEDEV="/dev/null"
+fi
+
+if [ "$UBOOT_SILENT" != "$UBOOT_EXPECTED_SILENT" ]; then
+    fw_setenv silent $UBOOT_EXPECTED_SILENT
+    echo "Updating U-Boot silent to \"$UBOOT_EXPECTED_SILENT\""
+fi
+
+if [ "$UBOOT_BOOTDELAY" != "$UBOOT_EXPECTED_BOOTDELAY" ]; then
+    fw_setenv bootdelay $UBOOT_EXPECTED_BOOTDELAY
+    echo "Updating U-Boot bootdelay to \"$UBOOT_EXPECTED_BOOTDELAY\""
+fi
+
+if [ "$UBOOT_CONSOLEDEV" != "$UBOOT_EXPECTED_CONSOLEDEV" ]; then
+    fw_setenv consoledev $UBOOT_EXPECTED_CONSOLEDEV
+    echo "Updating U-Boot consoledev to \"$UBOOT_EXPECTED_CONSOLEDEV\""
+fi
+
+#################
+# Call each script in the /etc/rcS.d
+# to start them off in alphabetical / numerical order
+#
+# In commissioning mode, run the scripts that are in rc1.d
+#################
+rcdir=/etc/rcS.d
+if [ $COMMISSIONING_MODE = 1 ]; then
+    rcdir=/etc/rc1.d
+fi
+
+for i in ${rcdir}/S*
+do
+	[ ! -f  "$i" ]  && continue;
+	echo -n "Starting `basename $i`: " > /dev/console
+	$i start
+	RETVAL=$?
+	if [ $RETVAL -eq 0 ]; then
+		echo "OK" > /dev/console
+	else
+		echo "FAILED ($RETVAL)" > /dev/console
+	fi
+done
+
+echo "Running rc.local" > /dev/console
+/etc/init.d/rc.local
+
+
+# Save and compress the startup log
+# This must be just after the last init script is run
+mv $TMP_LOG /tmp/console.tmp
+# ipalog will create a new log file when it writes out the next log entry
+gzip -c /tmp/console.tmp > $CONSOLE_LOG
+rm /tmp/console.tmp
+
+# Pipe output of subshell through ipalog to limit file size and do rotation
+) 2>&1 | /opt/ipaccess/bin/ipalog -l $TMP_LOG_MAX $TMP_LOG &
+

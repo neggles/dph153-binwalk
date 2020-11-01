@@ -1,0 +1,29 @@
+#!/bin/bash
+#
+# verify and mount a cramfs image or block device
+#
+CRAMFSCK=/opt/ipaccess/bin/cramfsck
+
+# verify command line parameters
+if [ $# -ne 2 -o ! -e "$1" -o ! -d "$2" ]; then
+	echo "usage: `basename $0` device dir"
+	echo "  device is usually a block device, it may also be a cramfs image file"
+	echo "         in which case it will be loopback mounted"
+	echo "  dir    is the mountpoint"
+	exit 65
+fi
+
+# verify that it's a valid image
+$CRAMFSCK $1; RETVAL=$?
+
+if [ $RETVAL == 0 ]; then
+	if [ -f $1 ]; then
+		# files must be loopback mounted
+		mount -t cramfs -o loop $1 $2; RETVAL=$?
+	else
+		# block devices are mounted directly
+		mount -t cramfs $1 $2; RETVAL=$?
+	fi
+fi
+
+exit $RETVAL

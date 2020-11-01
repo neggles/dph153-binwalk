@@ -1,0 +1,9 @@
+#
+# Additional diag files to be uploaded
+#
+/usr/lib/ipkg/info/rmm.control
+/var/ipaccess/cisco/*
+/tmp/gps.cfg
+/tmp/gps.log
+/tmp/gps.log.0
+/tmp/cores/applications/*

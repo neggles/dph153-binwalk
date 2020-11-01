@@ -1,0 +1,9 @@
+Package: pc8209-302-dtcs
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 16.4
+Description: PicoArray image
+Source: MKS: e:/sie/3gap/src/cpe_picoChipRef/picoChipRef/PC8209/ipkg/PC8209

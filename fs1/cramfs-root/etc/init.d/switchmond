@@ -1,0 +1,52 @@
+#!/bin/bash
+#
+# /etc/init.d/switchmond        Initialise script to start switchmon wrapper script
+#
+#
+
+. /etc/init.d/functions
+
+PROG="switchmon-wrapper"
+APP=/opt/ipaccess/bin/$PROG
+RETVAL=0
+
+init()
+{
+    if [ -f $APP ]
+    then
+        # -g options overcomes large initial step
+        $APP &
+    else
+        echo "No $PROG server found"
+    fi
+}
+
+start() {
+    echo -n "Starting $PROG: "
+    is_app_running $PROG
+    if [ $? != $TRUE ]; then
+        init
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+            echo OK
+        else
+            echo FAILURE
+        fi
+    else
+        echo "FAILURE (already running)"
+    fi
+}
+
+
+
+# processing of command line
+case "$1" in
+    start)
+        start
+        ;;
+    *)
+        echo "Usage: $0 {start}"
+        exit 1
+esac
+
+exit $RETVAL

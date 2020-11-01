@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# add system local initialisation
+DEFAULT_PMTU_DISCOVERY=0
+scriptPATH=/opt/ipaccess/Utils/scripts
+cnfPATH=/var/ipaccess
+
+# check if pmtu discover is enabled/disabled
+pmtu_discovery=`$scriptPATH/getVarVal $cnfPATH/ipconfig.dat PMTU_DISCOVERY_ENABLED`
+       
+if [ "$pmtu_discovery"+ == ""+ ]; then
+    pmtu_discovery=$DEFAULT_PMTU_DISCOVERY
+fi
+                       
+if [ "$pmtu_discovery" == "0" ]; then
+    # Disable path MTU discovery
+    echo 1 > /proc/sys/net/ipv4/ip_no_pmtu_disc
+else
+    # Enable path MTU discovery
+    echo 0 > /proc/sys/net/ipv4/ip_no_pmtu_disc
+fi 
+
+# Don't throttle RT tasks
+# http://www.kernel.org/doc/Documentation/scheduler/sched-rt-group.txt
+echo -1 > /proc/sys/kernel/sched_rt_runtime_us
+
+
+# Mount /tmp/cores as a separate partition with limited size
+mkdir /tmp/cores
+mount -t tmpfs -o size=256k none /tmp/cores

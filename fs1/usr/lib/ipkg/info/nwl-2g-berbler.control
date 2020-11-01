@@ -1,0 +1,9 @@
+Package: nwl-2g-berbler
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 213.0
+Description: NWL image
+Source: MKS e:/sie/3gap/src/cpe/target/picoarray/nwl/src

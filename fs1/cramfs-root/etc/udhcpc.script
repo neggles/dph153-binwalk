@@ -1,0 +1,243 @@
+#!/bin/sh
+
+PATH=/bin:/usr/bin:/sbin:/usr/sbin
+
+GETVARVAL=/opt/ipaccess/Utils/scripts/getVarVal
+UPDATE_RESOLV_CONF=/opt/ipaccess/bin/updateresolv
+BTSINITSCRIPT=/etc/init.d/nano-bts.sh
+RESOLV_CONF="/etc/resolv.conf"
+RESOLV_CONF_DHCP="/tmp/dhcp_resolv.conf"
+SYSCTL_DHCP_FILE="/tmp/dhcp_info.cfg"
+IFACE_CHANGES=0
+ROUTE_CHANGES=0
+
+update_interface()
+{
+  CURRENT_IP=`ifconfig $interface | awk '/inet addr:/ {print $2}' | awk -F: '{print $2}'`
+  CURRENT_BCAST=`ifconfig $interface | awk '/inet addr:/ {print $3}' | awk -F: '{print $2}'`
+  CURRENT_NMASK=`ifconfig $interface | awk '/inet addr:/ {print $4}' | awk -F: '{print $2}'`
+
+  if [ -n "$broadcast" -a "$broadcast" != "$CURRENT_BCAST" ]; then
+    if [ -n "$CURRENT_BCAST" ]; then
+      logger "udhcpc broadcast changed from $CURRENT_BCAST to $broadcast"
+    else
+      logger "udhcpc broadcast set to $broadcast"
+    fi
+    IFACE_CHANGES=1
+  fi
+  
+  if [ -n "$subnet" -a "$subnet" != "$CURRENT_NMASK" ]; then
+    if [ -n "$CURRENT_NMASK" ]; then
+      logger "udhcpc subnet changed from $CURRENT_NMASK to $subnet"
+    else
+      logger "udhcpc subnet set to $subnet"
+    fi
+    IFACE_CHANGES=1
+  fi
+  
+  if [ -n "$ip" -a "$ip" != "$CURRENT_IP" ]; then
+    if [ -n "$CURRENT_IP" ]; then
+      logger "udhcpc ip address changed from $CURRENT_IP to $ip"
+    else
+      logger "udhcpc ip address set to $ip"
+    fi
+    # update the issue script used by getty to display IP
+    if [ -f /tmp/issue ]; then
+        sed -ie "s/^IP: .*/IP: $ip (DHCP)/g" /tmp/issue
+    fi
+    IFACE_CHANGES=1
+  fi
+
+  if [ $IFACE_CHANGES == 1 ]; then
+    [ -n "$broadcast" ] && BROADCAST="broadcast $broadcast"
+    [ -n "$subnet" ] && NETMASK="netmask $subnet"
+    /sbin/ifconfig $interface $ip $BROADCAST $NETMASK
+  fi
+}
+
+update_strongswan()
+{
+  if [ $IFACE_CHANGES != 0 -o $ROUTE_CHANGES != 0 ]; then
+    # tell strongSwan the interface and/or default route has changed
+    /usr/local/sbin/ipsec update
+    # take down the tunnel, this is run twice as the first will put
+    # cause a graceful disconnect where we are attempting to notify 
+    # the peer, the second forces an immediate disconnect as we know
+    # the peer is no longer accessible.
+    /usr/local/sbin/ipsec down home
+    /usr/local/sbin/ipsec down home
+    # securityCtrl will notice the tunnel has gone down and bring it up
+  fi
+}
+
+send_sig_to_sysctrl()
+{
+  kill -SIGUSR1 `pidof -s ipa-mgr_app`
+}
+
+dump_to_file()
+{
+  echo "DHCP_DEFAULT_ROUTER" > $SYSCTL_DHCP_FILE
+  echo "string" >> $SYSCTL_DHCP_FILE 
+  echo "1" >> $SYSCTL_DHCP_FILE 
+  if [ -n "$router" ]
+  then
+      echo $router >> $SYSCTL_DHCP_FILE
+  else
+      echo "0.0.0.0" >> $SYSCTL_DHCP_FILE
+  fi
+  echo "DHCP_DNS_SERVER" >> $SYSCTL_DHCP_FILE
+  echo "string" >> $SYSCTL_DHCP_FILE 
+  echo "1" >> $SYSCTL_DHCP_FILE 
+  if [ -n "$dns" ]
+  then
+      cnt=1
+      str=""
+      for i in $dns
+      do
+          if [ $cnt -ne 1 ]; then
+              str=$str","
+          fi
+          str=$str$i
+          let cnt=cnt+1
+      done
+      echo $str >> $SYSCTL_DHCP_FILE
+  else
+      echo "0.0.0.0" >> $SYSCTL_DHCP_FILE
+  fi    
+  echo "DHCP_IP_ADDRESS" >> $SYSCTL_DHCP_FILE
+  echo "string" >> $SYSCTL_DHCP_FILE 
+  echo "1" >> $SYSCTL_DHCP_FILE 
+  if [ -n "$ip" ]
+  then
+      echo $ip >> $SYSCTL_DHCP_FILE
+  else
+      echo "0.0.0.0" >> $SYSCTL_DHCP_FILE
+  fi
+  
+  echo "DHCP_LEASE_TIME" >> $SYSCTL_DHCP_FILE
+  echo "string" >> $SYSCTL_DHCP_FILE 
+  echo "1" >> $SYSCTL_DHCP_FILE 
+  if [ -n "$lease" ]
+  then
+      echo $lease >> $SYSCTL_DHCP_FILE
+  else
+      echo "0" >> $SYSCTL_DHCP_FILE
+  fi
+  echo "DHCP_NET_MASK" >> $SYSCTL_DHCP_FILE
+  echo "string" >> $SYSCTL_DHCP_FILE 
+  echo "1" >> $SYSCTL_DHCP_FILE 
+  if [ -n "$subnet" ]
+  then
+      echo $subnet >> $SYSCTL_DHCP_FILE
+  else
+      echo "0.0.0.0" >> $SYSCTL_DHCP_FILE
+  fi
+  MAC=`/sbin/ifconfig $interface | head -3 | grep 'HWaddr ' | cut -d' ' -f 11`
+  echo "SYSTEM_MAC_ADDR" >> $SYSCTL_DHCP_FILE
+  echo "string" >> $SYSCTL_DHCP_FILE 
+  echo "1" >> $SYSCTL_DHCP_FILE 
+  echo $MAC >> $SYSCTL_DHCP_FILE
+  send_sig_to_sysctrl;
+}
+  
+update_routes()
+{
+  OLD_ROUTER=`$GETVARVAL $SYSCTL_DHCP_FILE DHCP_DEFAULT_ROUTER`
+
+  if [ "$OLD_ROUTER" != "$router" ]; then
+    ROUTE_CHANGES=1
+    if [ -n "$OLD_ROUTER" ]; then
+      logger "udhcpc default route changed from $OLD_ROUTER to $router"
+    else
+      logger "udhcpc default route set to $router"
+    fi
+  fi
+
+  if [ -n "$router" ]
+  then
+    echo "udhcpc deleting routes from $interface"
+    while /sbin/route del default gw 0.0.0.0 dev $interface
+    do :
+    done
+
+    for i in $router
+    do
+      echo "udhcpc adding route $i to $interface"
+      /sbin/route add default gw $i dev $interface
+    done
+  fi
+}
+
+update_dns()
+{
+  echo -n > $RESOLV_CONF_DHCP
+  [ -n "$domain" ] && echo domain $domain >> $RESOLV_CONF_DHCP
+  for i in $dns
+  do
+    echo "udhcpc adding dns $i"
+    echo nameserver $i >> $RESOLV_CONF_DHCP
+  done
+  # call helper script to update symlink only if we're not currently
+  # using DNS servers assigned by the IPsec GW
+  $UPDATE_RESOLV_CONF
+}
+
+start_bts()
+{
+  # If the Nano BTS script exists, then run it to (re)start the BTS port
+  if [ -x $BTSINITSCRIPT ]; then
+      $BTSINITSCRIPT restart
+  fi
+}
+
+stop_bts()
+{
+  # If the Nano BTS script exists, then run it to stop the BTS port
+  if [ -x $BTSINITSCRIPT ]; then
+      $BTSINITSCRIPT stop
+  fi
+}
+
+deconfig()
+{
+  /sbin/ifconfig $interface 0.0.0.0
+}
+
+
+case "$1" in
+  bound)
+    logger "udhcpc $1"
+    update_interface;
+    update_routes;
+    update_dns;
+    dump_to_file;
+    start_bts;
+    update_strongswan
+  ;;
+
+  renew)
+    logger "udhcpc $1"
+    update_interface;
+    update_routes;
+    update_dns;
+    dump_to_file;
+    update_strongswan
+  ;;
+
+  deconfig)
+    logger "udhcpc $1"
+    stop_bts
+    deconfig;
+    dump_to_file;
+  ;;
+
+  *)
+    logger "udhcpc called with unknown parameter $1"
+    echo "Usage: $0 {bound|renew|deconfig}"
+    exit 1
+    ;;
+esac
+
+exit 0
+

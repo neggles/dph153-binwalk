@@ -1,0 +1,82 @@
+#!/bin/sh
+#
+# iptables startup script
+#
+ME=`basename $0`
+IPTABLES=/usr/sbin/iptables
+DEFAULT_RULES=/etc/sysconfig/iptables-rules
+DEFAULT_NANO_RULES=/etc/sysconfig/iptables-nano-rules
+VARIANT_RULES=/etc/sysconfig/iptables-$FS_VARIANT-rules
+NVENV=/var/ipaccess/nv_env.sh
+
+if [ -f $NVENV ]; then
+    source $NVENV
+fi
+
+flush()
+{
+    echo "$ME: flushing and removing chains"
+    $IPTABLES -F
+    $IPTABLES -F -t mangle
+    $IPTABLES -X -t mangle
+    $IPTABLES -X
+}
+
+default_policy()
+{
+    if [ "$1" == "" ]; then
+        echo "$ME: no default policy specified"
+        POLICY=DROP
+    else
+        POLICY=$1
+    fi
+    echo "$ME: applying default policy $1"
+    $IPTABLES -P INPUT   $POLICY && \
+    $IPTABLES -P FORWARD $POLICY && \
+    $IPTABLES -P OUTPUT  $POLICY
+}
+
+if [ ! -x $IPTABLES ]; then
+    echo "$ME: Can't run $IPTABLES"
+    exit 1
+fi
+
+case "$1" in
+    start)
+        flush
+        if [ "$ENV_FIREWALL_DISABLED" = "TRUE" ]; then
+            echo "$ME: firewall disabled for development"
+            default_policy ACCEPT
+        else
+            if [ -x "$VARIANT_RULES" ]; then
+                echo "$ME: applying rules from `basename $VARIANT_RULES`"
+                $VARIANT_RULES
+            else
+                # apply different default rules for nano variants
+                RULES=$DEFAULT_RULES
+                [ $IS_NANO = 1 ] && RULES=$DEFAULT_NANO_RULES
+
+                if [ -x "$RULES" ]; then
+                    echo "$ME: applying rules from `basename $RULES`"
+                    $RULES
+                else
+                    echo "$ME: no rules defined for variant $FS_VARIANT"
+                    default_policy ACCEPT
+                fi
+            fi
+        fi
+        ;;
+    stop)
+        flush
+        default_policy ACCEPT
+        ;;
+    panic)
+        flush
+        default_policy DROP
+        ;;
+    status)
+        $IPTABLES -L --line-numbers
+        ;;
+    *)
+esac
+

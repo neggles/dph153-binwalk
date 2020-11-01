@@ -1,0 +1,154 @@
+#!/bin/bash
+#
+# script to mount OEM flash partitions, verifying them and 
+# reverting to backup copies if corrupt
+#
+CRAMFSCK=/opt/ipaccess/bin/cramfsck
+ERASEALL=/usr/sbin/flash_eraseall
+
+# MTD partition numbers
+MTD_DIVERT_MASTER=7
+MTD_DIVERT_BACKUP=8
+MTD_DATA_MASTER=9
+MTD_DATA_BACKUP=10
+MTD_LIB_MASTER=11
+MTD_LIB_BACKUP=12
+MTD_TEST=13
+MTD_FACTORY=14
+
+# mount points
+DIVERT_MP=/var/ipaccess/oem_divert
+DATA_MP=/var/ipaccess/oem_data
+LIB_MP=/var/ipaccess/oem_lib
+TEST_MP=/var/ipaccess/test
+FACTORY_MP=/var/ipaccess/factory_config
+
+# control whether OEM partitions should be mounted
+MOUNT_OEM_PARTS=0
+
+RETVAL=0
+
+
+#   $1 is the master MTD device number
+#   $2 is the backup MTD device number
+#   $3 is the mount point
+mount_oem_partition() {
+    local RESULT=0
+
+    # create mountpoint directory
+    mkdir -p $3
+    # validate cramfs image on mtd device
+    $CRAMFSCK /dev/mtdblock$1 > /dev/null 2>&1; RESULT=$?
+    if [ $RESULT == 0 ]; then
+        # validated, attempt to mount
+        mount -t cramfs /dev/mtdblock$1 $3; RESULT=$?
+    fi
+    
+    if [ $RESULT != 0 ]; then
+        # failed to mount master copy, validate the backup
+        $CRAMFSCK /dev/mtdblock$2 > /dev/null 2>&1; RESULT=$?
+        if [ $RESULT == 0 ]; then
+            # erase master and write backup
+            echo "`basename $3` master copy invalid, reverting to backup"
+            $ERASEALL /dev/mtd$1
+            cat /dev/mtd$2 >> /dev/mtd$1
+            # now validate it and try to mount it again
+            $CRAMFSCK /dev/mtdblock$1 > /dev/null 2>&1; RESULT=$?
+            if [ $RESULT == 0 ]; then
+                mount -t cramfs /dev/mtdblock$1 $3; RESULT=$?
+            fi
+        fi
+    fi
+    
+    if [ $RESULT == 0 ]; then
+        echo -n "`basename $2` OK.. "
+    fi
+
+    return $RESULT
+}
+
+#   $1 is the MTD device number
+#   $2 is the mount point
+mount_factory_partition() {
+    local RESULT=0
+
+    # create mountpoint directory
+    mkdir -p $2
+    # validate cramfs image on mtd device
+    $CRAMFSCK /dev/mtdblock$1 > /dev/null 2>&1; RESULT=$?
+    if [ $RESULT != 0 ]; then
+        echo -n "`basename $2` (not present).. "
+    fi
+
+    if [ $RESULT == 0 ]; then
+        # validated, attempt to mount
+        mount -t cramfs /dev/mtdblock$1 $2; RESULT=$?
+    fi
+    
+    if [ $RESULT == 0 ]; then
+        echo -n "`basename $2` OK.. "
+    fi
+
+    return $RESULT
+}
+
+start() {
+    local RESULT=0
+
+    echo -n "Mounting partitions: "
+    mount_factory_partition $MTD_FACTORY $FACTORY_MP
+    RESULT=$?
+    if [ $RESULT != 0 ]; then
+        echo
+        echo "***************************************************"
+        echo "** !!!!!FACTORY CONFIG PARTITION IS INVALID!!!!! **"
+        echo "***************************************************"
+        # stdout is redirected to a log file, so repeat the message directly to the console
+        echo                                                       >/dev/console
+        echo "***************************************************" >/dev/console
+        echo "** !!!!!FACTORY CONFIG PARTITION IS INVALID!!!!! **" >/dev/console
+        echo "***************************************************" >/dev/console
+        RETVAL=1
+    fi
+    mount_factory_partition $MTD_TEST $TEST_MP
+
+    if [ $MOUNT_OEM_PARTS != 0 -a "`grep mtd$MTD_LIB_BACKUP /proc/mtd`" != "" ]; then
+        mount_oem_partition $MTD_DIVERT_MASTER $MTD_DIVERT_BACKUP $DIVERT_MP
+        mount_oem_partition $MTD_DATA_MASTER $MTD_DATA_BACKUP $DATA_MP
+        mount_oem_partition $MTD_LIB_MASTER $MTD_LIB_BACKUP $LIB_MP
+    fi
+    echo "done"
+}
+
+stop() {
+    umount $TEST_MP > /dev/null 2>&1
+    umount $FACTORY_MP > /dev/null 2>&1
+    if [ $MOUNT_OEM_PARTS != 0 ]; then
+        umount $DIVERT_MP > /dev/null 2>&1
+        umount $DATA_MP > /dev/null 2>&1
+        umount $LIB_MP > /dev/null 2>&1
+    fi
+}
+
+restart() {
+    stop
+    start
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

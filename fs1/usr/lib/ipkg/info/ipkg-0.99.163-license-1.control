@@ -1,0 +1,10 @@
+Package: ipkg-0.99.163-license-1
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 389.18
+Description: ip.Access 3G Access Point software component.
+Source: ip.access
+Depends: 

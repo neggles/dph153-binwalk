@@ -1,0 +1,290 @@
+#!/bin/bash
+#
+# Start-up script for DTCS mode
+# Load FPGA, load DTCS image into pico array, open firewall port
+#
+# Copyright (c) 2011, ip.access Ltd
+
+. /etc/init.d/functions
+
+RETVAL=0
+
+IPTABLES=/usr/sbin/iptables
+INTIF=lo
+EXTIF=`cat /tmp/wanif`
+
+DTCSIF_FOR_ARM="/opt/ipaccess/bin/dtcsIf_forarm 10000 0 &"
+DTCSIF_FOR_ARM_PROG=dtcsIf_forarm
+
+DTCSIF_APP="/opt/ipaccess/bin/dtcsIfApp 10000 0 &"
+DTCSIF_APP_PROG=dtcsIfApp
+
+SYS_TEST_ENG="/etc/init.d/steIf start"
+SYS_TEST_ENG_PROG=sysTestEngApp
+
+###################################
+# Picoifapp test for PC302/202 etc
+PC202_DEVICE_ID=0x0010
+PC203_DEVICE_ID=0x0011
+PC205_DEVICE_ID=0x0012
+
+PC302_DEVICE_ID=0x8003
+PC312_DEVICE_ID=0x8007
+
+PC313_DEVICE_ID=0x0020
+PC323_DEVICE_ID=0x0021
+PC333_DEVICE_ID=0x0022
+
+
+
+CPU=`picoifapp -c "cpu=picoif.configRead(0,0x48,0x30,1)[1]
+    if (cpu==$PC302_DEVICE_ID or cpu==$PC312_DEVICE_ID) then
+        print(\"3X2\")
+    elseif (cpu==$PC313_DEVICE_ID or cpu==$PC323_DEVICE_ID or cpu==$PC333_DEVICE_ID) then
+        print(\"3X3\")
+    elseif (cpu==$PC202_DEVICE_ID) then
+        print(\"202\")
+    end"`
+
+
+echo "CPU type: $CPU"
+
+
+# The default type is 3G NWL PHY
+if [ "$PHY_TYPE" = "" ]
+then
+    PHY_TYPE=3G
+fi
+
+# Set the default Pico Array image
+if [ "$PHY_TYPE" = "2G" ]
+then
+    DTCS_IMAGE=/opt/ipaccess/bin/nwl_subsystem_Dev0_2g.pa
+    DTCS_IFCMD="$DTCSIF_FOR_ARM"
+else
+    if [ "$CPU" = "3X3" ]; then
+        DTCS_IMAGE=/opt/ipaccess/bin/phy3g.pa
+        DTCS_IFCMD="$SYS_TEST_ENG"
+    elif [ "$CPU" = "3X2" ]; then
+        DTCS_IMAGE=/opt/ipaccess/bin/phy3g-dtcs.pa
+        DTCS_IFCMD="$DTCSIF_APP"
+    else
+        # 202
+        DTCS_IMAGE=/opt/ipaccess/bin/phy3g-dtcs.pa
+        DTCS_IFCMD="$DTCSIF_FOR_ARM"
+    fi
+fi
+
+# Allow env to override PA image file
+if [ -n "$PAIMAGE" ]
+then
+    DTCS_IMAGE="$PAIMAGE"
+fi
+
+
+
+setTchMode()
+{
+    if [ "$CPU" = "202" ]
+    then
+        picoifapp -c 'picoif.registerWrite(0,"PC202_GPR_AHB2PICO_0", 0x50000004)'
+    elif [ "$CPU" = "3X2" ];
+    then
+        picoifapp -c 'picoif.registerWrite(0,"PC302_GPR_AXI2PICO_0", 0x50000004)'
+    else
+        picoifapp -c 'picoif.registerWrite(0,"PC3XX_GPR_AXI2PICO_0", 0x50000004)'
+    fi
+}
+
+
+open_firewall_port()
+{
+    # TCP incoming external
+    $IPTABLES -I INPUT -i $EXTIF -p tcp -m state --state NEW -m multiport --dports $1 -j ACCEPT
+}
+
+rfOff()
+{
+    sdgpio_util -txifmodulation 0
+}
+
+
+start()
+{
+    echo
+    echo "**** Starting DTCS mode ****"
+    echo
+
+    # --- Start pico ---
+
+    # Load the FPGA Configuration (use -fpgaload2G for a 2G NWL)
+    if [ "$CPU" = "202" ]; then
+        if [ "$PHY_TYPE" = "3G" ]; then
+            # Load the 3G FPGA
+            echo "Loading 3G FPGA Image"
+            sdgpio_util -fpgaload3G
+        elif [ "$PHY_TYPE" = "2G" ]; then
+            # Load the 2G FPGA
+            echo "Loading 2G FPGA Image"
+            sdgpio_util -fpgaload2G
+        else
+            echo "WARNING: PHY_TYPE $PHY_TYPE not recognised"
+        fi
+    fi
+
+    # Cleanly reset the Pico for loading other images
+    sdgpio_util -stopPico
+    sdgpio_util -resetPico
+
+    # Start pico and dtcsIf here as needed by sdgpio_util
+    echo "Loading Pico Array image $DTCS_IMAGE"
+    picoifapp -c "picoif.loadFile (0, \"$DTCS_IMAGE\") start()"
+    eval "$DTCS_IFCMD"
+
+
+    # run sdgpio_util to initialise the radios
+    sdgpio_util
+
+    # This was in picoinit. Do we still need it?
+    sdgpio_util -safestart
+
+    if [ "$CPU" = "3X3" ]; then
+        if [ "$PHY_TYPE" = "3G" ]; then
+       	     # Bring a cell up and down to initialise
+       	     /opt/ipaccess/bin/sysTestMgrStartup
+        fi
+    fi
+
+    # --- End of pico start up ---
+
+
+    echo "Programming RX mode"
+    sdgpio_util -rxmode 1
+
+    # Set gain table.
+    # For now, default to the highest supported band
+    if [ "$PHY_TYPE" = "3G" ]; then
+        # For 3G use UL band as we'll run DTCS tests
+        table=`sdgpio_util -hwswinfo | grep -A 20 supportedBands | grep UMTS | grep UL | awk '{print $2}' | sort -nr | head -1`
+    else
+        # For 2G use DL band as we'll run 2G BER/BLER tests
+        table=`sdgpio_util -hwswinfo | grep -A 20 supportedBands | grep -e "DCS_1800" -e "PCS_1900" | awk '{print $2}'`
+    fi
+
+    echo "Setting gain table $table"
+    if [ "$CPU" = "3X3" ]; then
+        sdgpio_util -agcupdate $table 0 1
+    else
+        # MEDP 19/7/2011 Don't know why this is different?
+        sdgpio_util -agcupdate $table 0
+    fi
+
+    if [ "$CPU" = "3X3" ]; then
+        if [ "$PHY_TYPE" = "3G" ]; then
+       	     # Make sure the PHY is running before enabling the transmitter
+             echo "Starting the PHY"
+       	     agc_app -s
+             sleep 1
+        fi
+    fi
+
+    echo "Turning on TXIF modulation"
+    sdgpio_util -txpwrdefault
+    sdgpio_util -txifmodulation 1
+
+
+    # Open port 10000 in firewall
+    echo "Opening port 10000 in firewall"
+    open_firewall_port 10000
+
+
+    /etc/init.d/picostatus start
+
+    # if 2G NWL then put into TCH Test mode for BER test -always do this in DTCS mode
+     if [ "$PHY_TYPE" = "2G" ]
+     then
+         setTchMode 
+         if [ "$CPU" = "3X3" ]
+         then
+             /etc/init.d/steIf stop
+             echo "Configured PC3x3 for 2G TCH BLER"
+         elif [ "$CPU" = "3X2" ]
+         then
+             echo "Swapping out dtcsIfApp for dtcsIf_forarm"
+             /etc/init.d/dtcsIf stop
+             /opt/ipaccess/bin/dtcsIf_forarm 10000 0 &
+             echo "Configured PC3x2 for 2G TCH BLER"
+         else
+             echo "Configured PC202 for 2G TCH BLER"
+         fi		
+     fi
+
+    # Set LED on steady
+    echo "F" >/dev/leddriver
+
+    echo
+    echo "End of DTCS mode start-up"
+    echo
+}
+
+
+stop_prog() {
+    PROG=$1
+    pid=`pidof -o $$ -o $PPID -o %PPID $PROG`
+    if [ -n "$pid" ]; then
+        echo -n "Stopping $PROG: "
+        kill -9 `pidof -o $$ -o $PPID -o %PPID $PROG` >/dev/null 2>&1
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+            echo OK
+        else
+            echo FAILURE
+        fi
+    fi
+}
+
+stop()
+{
+    rfOff
+
+    # Stop any if app that may be running in
+    stop_prog $DTCSIF_FOR_ARM_PROG
+    stop_prog $DTCSIF_APP_PROG
+    /etc/init.d/steIf stop || RETVAL=1
+
+    /etc/init.d/picostatus stop || RETVAL=1
+
+    # Turn LED off
+    echo "A" >/dev/leddriver
+
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+
+restart() {
+    stop
+    start
+}
+
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

@@ -1,0 +1,54 @@
+ ############################################################################
+ #
+ # IP.ACCESS -
+ #
+ # Copyright (c) 2008 ip.access Ltd.
+ #
+ ############################################################################
+ #
+ # $Log: README  $
+ # Revision 1.5 2009/05/07 10:57:08BST sh4 
+ # .
+ # Revision 1.4 2007/09/30 09:43:37BST Simon Hughes (sh4) 
+ # Creating v1.4
+ # Revision 1.3 2007/09/30 09:36:13BST Simon Hughes (sh4) 
+ # Trying $Log: README  $
+ # Trying Revision 1.5 2009/05/07 10:57:08BST sh4 
+ # Trying .
+ # Trying Revision 1.4 2007/09/30 09:43:37BST Simon Hughes (sh4) 
+ # Trying Creating v1.4
+ #
+ ############################################################################
+
+Overview
+~~~~~~~~
+- this project builds a version of the www.ntp.org ntp open source project patched 
+  with local changes. Built binaries include ntpd. The build is performed in a 
+  subdir created when the distribution tarball is expanded.
+
+Performing Test Runs with ntpd
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ntpd takes many hours to collect statistical data and produce low error 
+measures of offset and frequency. In an effort to set up tests in a consistent
+way and maximise the usefulness of collected data, a checklist of items needed 
+to prepare a form factor card for running an ntpd test and collecting statistics 
+follows:
+- reboot card so there is no kernel state from a previous running instance of ntpd.
+  ntpd uses the adjtimex syscall to program kernel state variables, so if ntpd has
+  run before, old state will influence system behaviour.
+- before rebooting the card, clear the message log e.g. 
+    $ cat /dev/null > /var/log/messages
+- after rebooting but before running the test, put a message in the message log 
+  indicating that the test is about to start:
+    $ logger "start of ntp_board_XX_test_YY_ddmmyy.txt"
+  Here:
+    - XX is the number of the form factor board.
+    - YY is the number of the test.
+    - dd is the date, mm is the month, yy is the year.
+- have a script that periodically e.g. every 300s, calls:
+    $ ntpq -np -crv >> ntp_board_XX_test_YY_ddmmyy.txt
+  to record statistics from the running ntpd. Check that during the initial 
+  training period that offset, frequency and stablility are 0.000 in the ntpq 
+  results. Check that the ntpq results are appended to a the file rather than 
+  overwriting the file every time results are logged.
+ 

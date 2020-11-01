@@ -1,0 +1,24 @@
+Package: libsslcrypto-cisco
+Priority: required
+Version: 482.0
+Architecture: arm
+Maintainer: Cisco Systems Inc.
+Source: http://www.cisco.com
+Section: cisco/libraries
+Description: Cisco Femto passphrase algorithm and root trust anchor
+ dac7651e573a58ac5b9f126286cf6c74 opt/ipaccess/lib/libsslcrypto-cisco.so.482.0
+ dac7651e573a58ac5b9f126286cf6c74 opt/ipaccess/lib/libsslcrypto.so.0
+ dac7651e573a58ac5b9f126286cf6c74 opt/ipaccess/lib/libsslcrypto.so
+ 05d83400e594036a23266e16cc3f24e9 opt/common/ta/oam/17101b1b.pem
+ 02ec3e2f7152fc94865a8fb68e0eb302 opt/common/ta/oam/5f875d0a.pem
+ 530b72e5e2484f6e0ab40d0aacb04fb0 opt/common/ta/oam/6b1c0f79.pem
+ 05d83400e594036a23266e16cc3f24e9 opt/common/ta/sta/17101b1b.pem
+ 02ec3e2f7152fc94865a8fb68e0eb302 opt/common/ta/sta/5f875d0a.pem
+ 530b72e5e2484f6e0ab40d0aacb04fb0 opt/common/ta/sta/6b1c0f79.pem
+ 05d83400e594036a23266e16cc3f24e9 opt/common/ta/iugta/17101b1b.pem
+ 02ec3e2f7152fc94865a8fb68e0eb302 opt/common/ta/iugta/5f875d0a.pem
+ 530b72e5e2484f6e0ab40d0aacb04fb0 opt/common/ta/iugta/6b1c0f79.pem
+ 05d83400e594036a23266e16cc3f24e9 opt/common/ta/kugta/17101b1b.pem
+ 02ec3e2f7152fc94865a8fb68e0eb302 opt/common/ta/kugta/5f875d0a.pem
+ c56146b0bf50b7a764fc3f1d2f2ab247 opt/common/ta/tstta/febaf9aa.pem
+ 40ee2df8026a23d48d985d9fc6a6b662 opt/common/ta/tstta/56993421.pem

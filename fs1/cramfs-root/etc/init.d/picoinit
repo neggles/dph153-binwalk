@@ -1,0 +1,139 @@
+#!/bin/bash
+#
+# picoinit        Initialise the pico
+# 
+#
+# PAIMAGE environment variable can be set to filename of pico array image to
+# load e.g. add the following line to /etc/profile
+# export PAIMAGE=/opt/ipaccess/bin/phy3g-dtcs.pa
+
+# The default type is 3G NWL PHY
+if [ "$PHY_TYPE" == "" ]
+then
+    export PHY_TYPE=3G
+fi
+
+
+PROG=picoArray
+RETVAL=0
+
+# Initialise the pico Array
+pico_init()
+{
+    echo ""
+    echo "**************************"
+    echo "*** Loading FPGA Image ***"
+    echo "**************************"
+        
+    # Load the FPGA Configuration (use -fpgaload2G for a 2G NWL)
+    # If this hardware doesn't have an FPGA, then sdgpio_util quietly does nothing
+    if [ "$PHY_TYPE" == "3G" -o "$PHY_TYPE" == "3g" ]
+    then
+        # Load the 3G FPGA
+        sdgpio_util -fpgaload3G
+    else
+        # Load the 2G FPGA
+        sdgpio_util -fpgaload2G
+    fi
+        
+    # Cleanly reset the Pico for loading other images
+    sdgpio_util -stopPico
+    sdgpio_util -resetPico
+
+    # Start pico here as needed by sdgpio_util
+    if [ -n "$PAIMAGE" -a -r "$PAIMAGE" ]
+    then
+        # use the image specified in the env var
+        IMAGE=$PAIMAGE
+    else
+        IMAGE=/opt/ipaccess/bin/phy3g.pa
+    fi
+    
+    if [ -x /opt/ipaccess/bin/picoifapp -a -r "$IMAGE" ]
+    then
+        echo "Programming pico with image $IMAGE ...."
+        picoifapp -c "picoif.loadFile (0, \"$IMAGE\") start()"
+        echo "finished programming pico"
+        echo 3 > /tmp/bootstatus
+    else
+        echo "Pico Not running"
+    fi
+
+    # sdgpio_util must be run after programming the FPGA
+    sdgpio_util
+    
+    # Do we still need this?
+    sdgpio_util -safestart
+}
+
+
+# De-initialise the pico Array
+pico_deinit()
+{
+    if [ -x /opt/ipaccess/bin/sdgpio_util ] 
+    then
+        echo "De-initialising pico"
+
+        # stop the pico array
+        sdgpio_util -stopPico
+        sdgpio_util -resetPico
+        echo "finished de-initialising pico"
+        echo 1 > /tmp/bootstatus
+    else
+        echo "Pico Not running"
+    fi
+    RETVAL=0
+}
+
+start() {
+    echo -n "Starting $PROG: "
+    pico_init
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+stop() {
+    echo -n "Stopping $PROG: "
+    STATUS=`pico_status -v | grep NOT`
+    #echo -n "($STATUS)"
+    if [ -z "$STATUS"  ]; then
+        # pico is running
+        pico_deinit
+    else 
+        echo -n "(NOT RUNNING) "
+    fi
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

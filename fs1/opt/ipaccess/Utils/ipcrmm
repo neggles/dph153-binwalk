@@ -1,0 +1,17 @@
+#!/bin/bash
+
+shmemid=`ipcs -m | grep 0x | awk '{print \$2}'`
+semaid=`ipcs -s | grep 0x | awk '{print \$2}'`
+msgqid=`ipcs -q | grep 0x | awk '{print \$2}'`
+
+echo "Removing shared mem segments"
+for i in $shmemid; do ipcrm -m $i; done
+
+echo "Removing semaphores"
+for i in $semaid; do ipcrm -s $i; done
+
+echo "Removing msg queues"
+for i in $msgqid; do ipcrm -q $i; done
+
+exit
+

@@ -1,0 +1,8 @@
+Package: dph151-leds
+Priority: optional
+Version: 1.0
+Section: misc
+Architecture: arm
+Maintainer: Cisco
+Source: loadleds
+Description: Script to adjust default LED patterns on DPH151

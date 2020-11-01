@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# This script starts getty, and keeps respawning it only if the
+# environment variable ENV_VERBOSE_CONSOLE_ENABLED indicates that
+# it should be enabled
+#
+NVENV=/var/ipaccess/nv_env.sh
+ISSUE_FILE=/tmp/issue
+
+if [ -f $NVENV ]; then
+    source $NVENV
+fi
+
+if [ "$ENV_VERBOSE_CONSOLE_ENABLED" == "TRUE" ]; then
+    while [ 1 ]
+    do
+      # generate issue file - the file itself can't contain the
+      # dynamic information we're interested in so it needs to be
+      # re-generated each time
+      /opt/ipaccess/Utils/scripts/getbanner serial > $ISSUE_FILE
+      # disply contents of /tmp/issue before login prompt if it
+      # was successfully created, otherwise show nothing
+      if [ $? = 0 -a -f $ISSUE_FILE ]; then
+        ISSUE="-f $ISSUE_FILE"
+      else
+        ISSUE="-i"
+      fi
+      /sbin/getty $ISSUE -L ttyS00 115200 vt100
+    done
+else
+    while [ 1 ]
+    do
+        sleep 3600
+    done
+fi

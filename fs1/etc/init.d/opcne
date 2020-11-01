@@ -1,0 +1,152 @@
+#!/bin/sh
+#
+# Start-up script for CNE mode
+# Load FPGA, load normal image into pico array, open firewall port
+
+
+. /etc/init.d/functions
+. /etc/profile
+
+PAIMAGE=/opt/ipaccess/bin/phy3g.pa
+RETVAL=0
+
+IPTABLES=/usr/sbin/iptables
+INTIF=lo
+EXTIF=`cat /tmp/wanif`
+
+
+SDGPIO_UTIL=/opt/ipaccess/bin/sdgpio_util
+PICOIFAPP=/opt/ipaccess/bin/picoifapp
+
+GETVARVAL=/opt/ipaccess/Utils/scripts/getVarVal
+OPPARAMS=/var/ipaccess/operational_params.dat
+
+open_firewall_port() {
+    # TCP incoming external
+    $IPTABLES -I INPUT -i $EXTIF -p tcp -m state --state NEW -m multiport --dports $1 -j ACCEPT
+}
+
+RF_on()
+{
+    # Run  it in '-init' mode AGAIN! to re-initialise the RX as well (using updated DEFAULT_DL_UARFCN in operational_params.dat)
+    $SDGPIO_UTIL
+    # Now run it to enable TXIF modulation
+    $SDGPIO_UTIL -txpwrdefault
+    $SDGPIO_UTIL -txifmodulation 1
+
+    if [ -f $OPPARAMS ]; then
+       DEFAULT_TX_PWR=`$GETVARVAL $OPPARAMS DEFAULT_TX_POWER_DBM  decimal 1`
+       DEFAULT_DL_UARFCN=`$GETVARVAL $OPPARAMS DEFAULT_DL_UARFCN  decimal 1`
+       TX_PWR_MANUAL_DAC=`$GETVARVAL $OPPARAMS MANUAL_TX_POWER_DAC  decimal 1`
+
+       # Test if user set TX power to -999 from webif. If so then they want to use a Manual dac value   
+       if [ $DEFAULT_TX_PWR -eq "-999" ]; then
+          $SDGPIO_UTIL -txpwrdac $TX_PWR_MANUAL_DAC
+       #else
+          # This is sort of redundant since the -txifmodulation above does this anyway...
+          #$SDGPIO_UTIL -txpwrabs $DEFAULT_TX_PWR $DEFAULT_DL_UARFCN
+       fi
+    fi
+    
+}
+
+RF_off()
+{
+    $SDGPIO_UTIL -txifmodulation 0
+}
+
+
+start() {
+
+    echo
+    echo "**** Starting CNE mode ****"
+    echo
+
+    # --- Start of code from picoinit script ---
+
+    # Load the FPGA Configuration (use -fpgaload2G for a 2G NWL)
+    echo "Loading FPGA Image"
+    $SDGPIO_UTIL -fpgaload3G
+
+    # Cleanly reset the Pico for loading other images
+    $SDGPIO_UTIL -stopPico
+    $SDGPIO_UTIL -resetPico
+
+    # sdgpio_util must be run after programming the FPGA - just in case pico gets upset
+    $SDGPIO_UTIL
+
+    $PICOIFAPP -c "picoif.loadFile (0, \"$PAIMAGE\") start()"
+
+    # This was in picoinit. Do we still need it?
+    $SDGPIO_UTIL -safestart
+
+    # --- End of code from picoinit script ---
+
+    # Start transmitting
+    echo "Turning on TXIF modulation"
+    RF_on
+
+    /etc/init.d/l1apiApp start
+
+    # Open port 20000 in firewall
+    echo "Opening port 20000 in firewall"
+    open_firewall_port 20000
+
+    /etc/init.d/picostatus start
+
+
+    # Set LED on steady
+    echo "F" >/dev/leddriver
+
+    echo
+    echo "End of CNE mode start-up"
+    echo
+
+    return 0
+}
+
+
+stop() {
+    # Turn off radio
+    RF_off
+
+    /etc/init.d/l1apiApp stop
+    /etc/init.d/picostatus stop
+
+    # Turn LED off
+    echo "A" >/dev/leddriver
+
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+
+restart() {
+    stop
+    start
+}
+
+
+# processing of command line
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    rfadjust)
+        RF_on
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|rfadjust}"
+        exit 1
+esac
+
+exit $RETVAL

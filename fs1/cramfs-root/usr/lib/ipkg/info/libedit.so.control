@@ -1,0 +1,10 @@
+Package: libedit.so
+Provides: libedit.so
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 20090610-3.0
+Description: libedit run-time
+Source: ip.access

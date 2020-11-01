@@ -1,0 +1,313 @@
+#!/bin/bash
+
+####################################################################################
+# This script starts stops and restarts all applications
+####################################################################################
+
+DMISCRIPT=/var/ipaccess/init.dmi
+DMIBINNAME=ipa-dmi
+DMIPIDFILE=/var/run/${DMIBINNAME}.pid
+DMI_TELNET_PORT=8090
+PROG_DMI=/opt/ipaccess/DMI/${DMIBINNAME}
+PROG_MGRAPP=ipa-mgr_app
+
+GETVARVAL=/opt/ipaccess/Utils/scripts/getVarVal
+SW_DESC=/etc/sw_description.dat
+
+IPTABLES=/usr/sbin/iptables
+INTIF=lo
+EXTIF=`cat /tmp/wanif`
+
+
+NVENV=/var/ipaccess/nv_env.sh
+
+# uncomment for debug trace
+#set -o xtrace
+
+. /etc/init.d/functions
+
+if [ -f $NVENV ]; then
+    source $NVENV
+fi
+
+FS_TYPE=`$GETVARVAL $SW_DESC FS_VARIANT`
+
+
+hnb_script=/opt/ipaccess/Iapc/iapc.sh
+hnb_process=iapc
+
+if [ ! -x $hnb_script ]; then
+    hnb_script=/opt/ipaccess/SoipRouter/soiprouter.sh
+    hnb_process=soiprouter
+fi
+
+RETVAL=0
+
+open_firewall_port() {
+    # TCP incoming external
+    $IPTABLES -I INPUT -i $EXTIF -p tcp -m state --state NEW -m multiport --dports $1 -j ACCEPT
+}
+
+start()
+{
+
+  echo
+  echo "**** Starting Normal operating mode ****"
+  echo
+
+  # Setup default operational_params.dat config if missing
+  # Load the FPGA Configuration (use -fpgaload2G for a 2G NWL)
+  echo "Loading FPGA Image"
+  sdgpio_util -fpgaload3G
+
+  # sdgpio_util must be run after programming the FPGA
+  sdgpio_util
+
+  # Make sure nwlIf is running
+  /etc/init.d/nwlIf start
+
+  # Set up destination for core files before starting processes
+  /opt/ipaccess/bin/waitforpids init
+
+  # List of the names of the pid files (minus the .pid) which the crash handler creates in
+  # /var/run as the applications start. Note these names are not necessarily the same as the
+  # application/process name. In order for the pid file to be created, the application has to
+  # either be linked to the crash handler library, or create its own pid file using the name below.
+  #
+  PIDFILENAMES="ipa-mgr_app uplayer ${hnb_process} ipa-rrm 3gctrlapp"
+  PIDFILEPATH="/var/run"
+  PIDSINGLEWAIT=20
+  PIDTOTALWAIT=80
+
+  # This may not be the first time that opnormal has been run, so remove any stale pid files.
+  for pidname in $PIDFILENAMES
+  do
+    rm -f $PIDFILEPATH/$pidname.pid
+  done
+
+  # in the case that opnormal start is run twice without an intervening stop,
+  # halt the previously started dmi
+  dmistop
+  
+  #Remove shared resources
+  /opt/ipaccess/Utils/ipcrmm
+
+  #Starting all applications
+  /opt/ipaccess/Drivers/cpetd_load
+
+  if [ ${ENV_START_NSS:-"FALSE"} == "TRUE" ]; then
+      /etc/init.d/nss start
+  fi
+
+  ${hnb_script} start
+  /opt/ipaccess/MgrApp/mgr_app.sh start
+  /opt/ipaccess/RRM/rrm.sh start
+  /opt/ipaccess/3GCtrlApp/3gcntl.sh start
+  /opt/ipaccess/L1Router/plrouter.sh start
+  /opt/ipaccess/UPlayerApp/uplayer.sh start
+
+  sleep 4
+    
+  #
+  # Collect the PIDs of the applications to be monitored by waitforpids
+  #
+  # If a pidfile doesn't exist, wait for a second, and try again, upto
+  # $PIDSINGLEWAIT times in case the application is slow starting up.
+  #
+  # If the total time this section has waited gets up to $PIDTOTALWAIT seconds,
+  # then assume something major has gone wrong and abort the whole process.
+  #
+  total_wait=0
+  
+  PIDS=
+  for pidname in $PIDFILENAMES
+  do
+    for i in `seq 1 $PIDSINGLEWAIT`
+    do
+      if [ -e $PIDFILEPATH/$pidname.pid ]; then
+        THISPID=`cat $PIDFILEPATH/$pidname.pid | tr -d " "`
+        if [ "$THISPID" != "" ]; then
+          echo "Application $pidname started with PID $THISPID"
+          PIDS="$PIDS $THISPID"
+          break
+        else
+          echo "Pid file for $pidname is empty, retrying"
+        fi
+      fi
+      
+      if [ "$i" -eq "$PIDSINGLEWAIT" ]; then
+        echo "Pid file for application $pidname not found after $i tries, aborting......."
+        echo > /dev/console
+        echo "$pidname failed to start, aborting." > /dev/console
+        dmistop
+        /opt/ipaccess/bin/waitforpids abort
+        exit
+      else
+        echo "Pid file for application $pidname not found, waiting 1 second ($i)..........."
+        let "total_wait += 1"
+        sleep 1
+      fi
+    done
+    
+    if [ "$total_wait" -gt "$PIDTOTALWAIT" ]; then
+      echo "Gathering PIDs has taken more than $PIDTOTALWAIT seconds, aborting........"
+      echo > /dev/console
+      echo "Apps taking too long to start, aborting." > /dev/console
+      dmistop
+      /opt/ipaccess/bin/waitforpids abort
+      exit
+    fi    
+  done
+
+  if [ "$total_wait" -le "$PIDTOTALWAIT" ]; then
+    # Add pid of picolibRouter
+    PIDS="$PIDS `pgrep -o picolibRouter`"
+    echo "opnormal: Running waitforpids to monitor the following PIDS: $PIDS"  
+    /opt/ipaccess/bin/waitforpids $PIDS  &
+  fi
+ 
+  #
+  # We have to allow time for the RRM and SoipRouter to register with OAM
+  # before we allow DMI to send any actions.
+  #
+  sleep 4
+
+  dmistart
+
+  echo
+  echo "End of Normal mode start-up"
+  echo
+
+}
+
+stop()
+{
+  # kill waitforpids monitor
+  WFP=`pidof waitforpids`
+  if [ "$WFP" != "" ]; then
+    kill -9 $WFP
+  fi
+  #Stopping all applications
+  appstop
+}
+
+appstop()
+{
+  dmistop
+  /opt/ipaccess/UPlayerApp/uplayer.sh stop
+  /opt/ipaccess/3GCtrlApp/3gcntl.sh stop
+  /opt/ipaccess/RRM/rrm.sh stop
+  ${hnb_script} stop
+  /opt/ipaccess/MgrApp/mgr_app.sh stop
+  /opt/ipaccess/L1Router/plrouter.sh stop
+  /opt/ipaccess/Drivers/cpetd_unload
+
+  if [ -x /etc/init.d/nss ]; then
+    /etc/init.d/nss stop
+  fi
+  
+  /etc/init.d/nwlIf stop
+
+  # unfortunately,  MgrApp doesnt clean up its child processes when 
+  # killed, so if present, ntpd has to be killed. wait for mgr_app to 
+  # exit otherwise it will respawn ntpd
+  let n=10
+  while [ $n -gt 0 ]
+  do
+    # Look for mgrapp process that is not defunct
+    if ! (/usr/local/bin/ps -e | grep -v grep | grep -v defunct | grep ${PROG_MGRAPP}); then
+      break
+    fi
+    sleep 1
+    let "n = $n - 1"
+  done
+  
+  NTPDPID=`pidof ntpd`
+  if [ "$NTPDPID" != "" ]; then
+    kill -9 $NTPDPID
+  fi
+}
+
+
+clean_sets_from_initdmi()
+{
+    FSNUM=`echo $FS_TYPE | cut -c1-3`
+
+    ## Assume only on 220 SW
+    if [ "$FSNUM" == "220" ]; then
+        NANO_INIT=`grep -c "// !--- This comment is used by WebIf to save the ---!" ${DMISCRIPT}`
+        if [ $NANO_INIT -gt 0 ]; then
+            # Replace lines starting with 'set' with // set
+            sed -i 's/^\(set .*\)/\/\/ REMOVED BY OPNORMAL FOR NANO - \1/' ${DMISCRIPT}
+        fi
+    fi
+}
+
+dmistart()
+{
+  # run the dmi initialisation script if present. background the app
+  if [ -f ${DMISCRIPT} ]; then
+    clean_sets_from_initdmi
+    IS_DMI_AUTOGEN=`grep -c "// init.dmi - THIS FILE IS AUTO-GENERATED" ${DMISCRIPT}`
+    if [ $IS_DMI_AUTOGEN -eq 0 ] && [ -x ${PROG_DMI} ]; then
+      echo "Running ${DMISCRIPT} DMI script"
+      ${PROG_DMI} -c "call ${DMISCRIPT}" &
+      echo $! > ${DMIPIDFILE}
+    fi
+  else
+  # init.dmi script not present - check to see if ENV_START_DMI_TELNET is defined
+    if [ ${ENV_START_DMI_TELNET:-"FALSE"} == "TRUE" ]; then
+      if [ -x ${PROG_DMI} ]; then
+        echo "Running DMI in telnet mode"
+        rm -f ${DMIPIDFILE}
+        ${PROG_DMI} -u ${DMI_TELNET_PORT} </dev/null >/dev/null 2>&1 &
+        echo $! > ${DMIPIDFILE}
+
+        # Open port in firewall
+        echo "Opening port ${DMI_TELNET_PORT} in firewall"
+        open_firewall_port ${DMI_TELNET_PORT}
+      fi
+    fi
+  fi
+}
+
+dmistop()
+{
+  # stop dmi application started as part of opnormal start, if still running
+  if [ -f ${DMIPIDFILE} ]; then 
+    _pid=`cat ${DMIPIDFILE}`
+    if [ "${_pid}"+ != ""+ ] && [ -d /proc/${_pid} ] ; then
+      kill -9 ${_pid}
+    fi
+    rm -f ${DMIPIDFILE}
+  fi
+}
+
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    appstop)
+    	appstop
+    	;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|appstop}"
+        exit 1
+esac
+
+exit $RETVAL
+

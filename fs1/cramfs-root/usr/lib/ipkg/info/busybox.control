@@ -1,0 +1,9 @@
+Package: busybox
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 1.9.2-8
+Source: MKS e:/sie/3gap/src/applications/thirdparty/busybox
+Description: Core utilities for embedded Linux systems

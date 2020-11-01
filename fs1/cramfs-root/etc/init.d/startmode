@@ -1,0 +1,24 @@
+#!/bin/bash
+
+NVENV=/var/ipaccess/nv_env.sh
+
+. /etc/init.d/functions
+
+
+if [ -f $NVENV ]; then
+    source $NVENV
+fi
+
+[ -z "$ENV_OPMODE_SCRIPT" ] && ENV_OPMODE_SCRIPT=opnormal
+
+
+if [ ! -x /etc/init.d/$ENV_OPMODE_SCRIPT ]; then
+    echo "startmode: $ENV_OPMODE_SCRIPT script not found"
+    exit 1
+fi
+
+/opt/ipaccess/bin/sdgpio_util -safestart
+
+echo "Running $ENV_OPMODE_SCRIPT $1"
+/etc/init.d/$ENV_OPMODE_SCRIPT $1
+

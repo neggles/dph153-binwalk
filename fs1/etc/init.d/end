@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+
+PROG="end"
+APP=/opt/ipaccess/bin/bootcount
+RETVAL=0
+
+WARMSTART=/opt/ipaccess/bin/warmstart
+WSVAL_COLD=0
+WSVAL_WARM=1
+
+start() {
+    echo -n "Starting $PROG: "
+    $APP 0
+    echo 100 > /tmp/bootstatus 
+    echo "OK"
+
+    # a value of 1 or 2 indicates a warm start, anything else
+    # is a cold start
+    WSVAL=$($WARMSTART)
+    case "$WSVAL" in
+        1|2)
+            echo "Warm start ($WSVAL)"
+            ;;
+        0|*)
+            echo "Cold start ($WSVAL)"
+            $WARMSTART 1
+            ;;
+    esac
+}
+
+stop() {
+    echo -n "Stopping $PROG: "
+    echo 0 > /tmp/bootstatus
+    echo "OK"
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

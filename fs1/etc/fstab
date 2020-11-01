@@ -1,0 +1,17 @@
+# /etc/fstab: static file system information.
+#
+# <file system> <mount point>   <type>      <options>                  <dump>  <pass>
+proc            /proc           proc        defaults                   0       0
+none            /dev/pts        devpts      gid=5,mode=620             0       0
+config          /config         configfs    defaults                   0       0
+sys             /sys            sysfs       defaults                   0       0
+none            /tmp            tmpfs       size=15m                   0       0
+none            /var/cache      tmpfs       size=512k,mode=755         0       0
+none            /var/empty      tmpfs       size=512k,mode=755         0       0
+none            /var/lock       tmpfs       size=512k,mode=755         0       0
+none            /var/log        tmpfs       size=512k,mode=755         0       0
+none            /var/run        tmpfs       size=512k,mode=755         0       0
+none            /var/spool      tmpfs       size=512k,mode=755         0       0
+none            /var/tmp        tmpfs       size=512k,mode=755         0       0
+/dev/mtdblock4	/var/ipaccess   jffs2	    size=3584k		       0       0
+

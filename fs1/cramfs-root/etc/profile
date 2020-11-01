@@ -1,0 +1,108 @@
+# /etc/profile: system-wide .profile file for the Bourne shell (sh(1))
+# and Bourne compatible shells (bash(1), ksh(1), ash(1), ...).
+# James Macfarlane 2005
+
+# if running interactively then...
+if [ "$PS1" ]; then
+
+    # check the window size after each command and, if necessary,
+    # update the values of LINES and COLUMNS.
+    #shopt -s checkwinsize
+
+    # Set a nice prompt
+    if [ "$BASH" ]; then
+        PS1=['\u@\h:\W\$]'
+    else
+       if [ "`id -u`" -eq 0 ]; then
+           PS1='# '
+       else
+           PS1='$ '
+       fi
+    fi
+fi
+
+PATH=$PATH:/usr/local/bin:/opt/ipaccess/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/sbin
+export PATH
+
+LD_LIBRARY_PATH=/lib:/usr/lib:/opt/ipaccess/lib
+export LD_LIBRARY_PATH
+
+# Setup environment for crash logs
+CRASH_LOG_PATH=/tmp/crash_logs/applications
+export CRASH_LOG_PATH
+
+
+if [ -f /var/ipaccess/opmode.sh ]
+then
+    source /var/ipaccess/opmode.sh
+else
+    export OP_MODE=OP_NORMAL
+fi
+
+umask 022
+
+# set size limit for core files in 1k blocks
+ulimit -c 300
+
+# PAIMAGE environment variables. 
+#  use to override default image (PC8202.pa) loaded into pico
+# export PAIMAGE=/opt/ipaccess/bin/PC8208-dtcs.pa
+
+GETVARVAL=/opt/ipaccess/Utils/scripts/getVarVal
+SWDESC=/etc/sw_description.dat
+FS=UNKNOWN
+
+if [ -f $SWDESC ]; then
+    FS=`$GETVARVAL $SWDESC FS_VARIANT`
+fi
+
+if [ "$FS" == "" ]; then
+    FS=UNKNOWN
+fi
+
+export FS_VARIANT=$FS
+
+NVENV=/var/ipaccess/nv_env.sh
+
+if [ -f $NVENV ]; then
+    source $NVENV
+fi
+
+# Create the directory for the crash logs
+mkdir -p $CRASH_LOG_PATH
+
+# helper to set environment variable to indicate nano sw
+# We test the presence of the nanoip script to indicate a Nano build
+IS_NANO=0
+[ -f /etc/init.d/nanoip ] && IS_NANO=1
+export IS_NANO
+
+# set environment variable to indicate in commissioning mode
+COMMISSIONING_MODE=0
+if [ $IS_NANO = 1 ] &&
+   [ ${ENV_COMMISSIONING_INTERFACE_ENABLED:-"TRUE"} = "TRUE" ] &&
+   [ -d /etc/rc1.d ]
+then
+    COMMISSIONING_MODE=1
+fi
+export COMMISSIONING_MODE
+
+# check if there's a VLAN ID configured and write the interface name to
+# /tmp/wanif to be read later by various startup/utility scripts.
+# If the file already exists just read the value out - it can't be changed
+# without a reboot.
+if [ -f /tmp/wanif ]; then
+    export WANIF=`cat /tmp/wanif`
+else
+    vlan_id=`$GETVARVAL /var/ipaccess/ipconfig.dat VLAN_ID`
+
+    WANIF="eth0"
+    if [ $COMMISSIONING_MODE = 0 ] &&
+       [ ${vlan_id:-"-1"} != "-1" ] && [ $vlan_id -ge 0 ] && [ $vlan_id -lt 4096 ]
+    then
+        WANIF="eth0.$vlan_id"
+    fi
+    export WANIF
+    echo $WANIF > /tmp/wanif
+fi
+

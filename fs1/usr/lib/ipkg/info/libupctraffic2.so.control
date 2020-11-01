@@ -1,0 +1,10 @@
+Package: libupctraffic2.so
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 563.21.2
+Description: ip.Access 3G Access Point software component
+Source: ip.access
+Depends: 

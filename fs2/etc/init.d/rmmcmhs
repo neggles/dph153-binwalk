@@ -1,0 +1,111 @@
+#!/bin/sh
+
+####################################################################################
+# This script starts stops resets and restarts all applications
+# Reset uses the default configuration if it does not exists for a application
+####################################################################################
+
+RMMCMHS="/var/ipaccess/cisco/`awk '/^Version:/{print \"rmmcmhs-\" $2}' /opt/cisco/control`"
+[ -x ${RMMCMHS} ] && exec ${RMMCMHS} $*
+
+. /etc/init.d/functions
+
+WDIR=/opt/cisco
+RETVAL=0
+
+initCMHS()
+{
+    PDIR=`pwd`                    
+                          
+    cd $WDIR       
+    eid=`grep -A3 SERIAL_NUMBER /var/ipaccess/hw_description.dat | grep -A2 string | grep "-" $device_id`
+                                                 
+    echo "cmhs $eid"
+    PROG_CMHS="cmhs $eid"
+    ./$PROG_CMHS
+                                                                            
+    cd $PDIR
+}
+
+startCMHS() {                                                                                                                                                                  
+    eid=`grep -A3 SERIAL_NUMBER /var/ipaccess/hw_description.dat | grep -A2 string | grep "-" $device_id`
+    PROG_CMHS="cmhs $eid"
+       
+    #setup default configuration if does not exists in /var/ipaccess 
+    if [ ! -d /var/ipaccess/cisco ]; then 
+        mkdir -p /var/ipaccess/cisco 
+    fi
+
+    cp -f /opt/cisco/cmhs_def_cfg.txt /var/ipaccess/cisco/cmhs_def_cfg.txt
+
+    echo -n "Starting $PROG_CMHS: "                                                                                                                                            
+    is_app_running $PROG_CMHS                                                                                                                                                  
+    if [ $? != $TRUE ]; then                                                                                                                                                      
+        initCMHS                                                                                                                                                               
+        RETVAL=$?                                                                                                                                                                 
+        if [ $RETVAL -eq 0 ]; then                                                                                                                                                
+            echo OK                                                                                                                                                               
+        else                                                                                                                                                                      
+            echo FAILURE                                                                                                                                                          
+        fi                                                                                                                                                                        
+    else                                                                                                                                                                          
+        echo "FAILURE (already running)"                                                                                                                                          
+    fi                                                                                                                                                                            
+}                                                                                                                                                                                 
+                                                                                                                                                                                                                                                                              
+stopCMHS() 
+{                                                                                                                                                                   
+    eid=`grep -A3 SERIAL_NUMBER /var/ipaccess/hw_description.dat | grep -A2 string | grep "-" $device_id`
+    echo "cmhs $eid"                                                                                     
+    PROG_CMHS="cmhs $eid"
+    echo -n "Stopping (SIGTERM) $PROG_CMHS: "                                                                                                                                  
+    kill -9 `pidof $PROG_CMHS`                                                                                                                                                 
+    RETVAL=$?                                                                                                                                                                     
+    if [ $RETVAL -eq 0 ]; then                                                                                                                                                    
+        echo OK                                                                                                                                                                   
+    else                                                                                                                                                                          
+        echo FAILURE                                                                                                                                                              
+    fi                                                                                                                                                                            
+    # hang about for a bit to allow cmhs to die gracefully                                                                                                                     
+
+    sleep 1
+}               
+
+start()
+{
+  #Starting CMHS application  
+  startCMHS
+  
+}
+
+stop()
+{
+  #Stopping CMHS application
+  
+  stopCMHS
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL
+

@@ -1,0 +1,10 @@
+Package: openssl
+Provides: openssl
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 0.9.8h-ipa1
+Description: openssl run-time
+Source: ip.access

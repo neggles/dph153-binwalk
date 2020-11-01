@@ -1,0 +1,10 @@
+Package: dropbear
+Provides: dropbear
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 0.50
+Description: dropbear ssh client
+Source: ip.access

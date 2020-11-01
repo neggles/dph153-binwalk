@@ -1,0 +1,39 @@
+bootcmd=run bootflash
+ramboot=setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs;tftp $ramdiskaddr $ramdiskfile;tftp $loadaddr $bootfile;bootm $loadaddr $ramdiskaddr
+nfsboot=setenv bootargs root=/dev/nfs rw nfsroot=$serverip:$rootpath ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:any console=$consoledev,$baudrate $othbootargs;bootm $kernel_flash_addr
+baudrate=115200
+loadaddr=0x00200000
+othbootargs=panic=1
+netdev=eth0
+bootlimit=4
+kernel_nand_offset=0x00100000
+mtdparts=physmap-flash.0:384K@0x03e00000(uBoot),256K@0x40000(env),2M(kernel1),2M(kernel2),3584K(config),27M(FS1),27M(FS2),256K@0(fsboot),128K@0x03e60000(oem_divert2),256K(oem_data1),256K(oem_data2),256K(oem_lib1),256K(oem_lib2),256K(resv),256K(ipa_calib)
+nfs_args=setenv bootargs root=/dev/nfs rw nfsroot=$serverip:$rootpath ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:any console=$consoledev,$baudrate $othbootargs mtdparts=$mtdparts;
+fixed_nfs=run nfs_args; tftp; bootm
+nand_jffs2=run nand_jffs2_args; nboot $loadaddr 0 $kernel_nand_offset; bootm $loaddddr
+nand_jffs2_args=setenv bootargs root=/dev/mtdblock6 rw rootfstype=jffs2 ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:any console=$consoledev,$baudrate $othbootargs;
+flash_args=setenv bootargs root=$rootdev ro rootfstype=cramfs,jffs2 ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:any console=$consoledev,$baudrate $othbootargs mtdparts=$mtdparts;
+set_args_1=setenv kernel_addr 0x40080000; setenv rootdev /dev/mtdblock5
+set_args_2=setenv kernel_addr 0x40280000; setenv rootdev /dev/mtdblock6
+check_bank=if test -z $bank; then setenv bank 1; fi
+bootflash=run check_bank; if test $bank -eq 1; then run set_args_1; else run set_args_2; fi; run flash_args; bootm $kernel_addr || run altbootcmd
+DIAGNOSTIC=TRUE
+ethact=pc302_emac
+netmask=255.255.255.0
+gatewayip=192.168.1.10
+altbootcmd=run check_bank; if test $bank -eq 1; then run set_args_2; else run set_args_1; fi; run flash_args; bootm $kernel_addr || set_led red
+ethaddr=34:BD:FA:74:4B:05
+stdin=serial
+stdout=serial
+stderr=serial
+bootcount=1
+ipaddr=192.168.1.56
+hostname=ip302ff
+serverip=192.168.1.10
+bootfile=224_009_197.0.bin
+rootpath=/opt/ipaccess/W3GFP103/224A_manuf_013_491.15.0,nolock,retran=10,tcp
+MANUFTEST=FALSE
+silent=on
+bootdelay=0
+consoledev=/dev/null
+bank=2

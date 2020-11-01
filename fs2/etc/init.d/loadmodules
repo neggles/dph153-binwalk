@@ -1,0 +1,92 @@
+#! /bin/bash
+#
+# loadmodules       Loads all modules listed in /etc/modules
+#
+
+PROG="modules"
+RETVAL=0
+
+# Using Synopsys Designware hardware watchdog
+
+WATCHDOG_MODULE="dw_wdt"
+
+init()
+{
+    # Loop over every line in /etc/modules.
+    (cat /etc/modules; echo) | # make sure there is a LF at the end
+    while read module args
+    do
+        case "$module" in
+            \#*|"") continue ;;
+        esac
+        echo "  Loading $module "
+        modprobe -q $module $args
+
+        # Start the watchdog if its watchdog module
+        # and reset the counter every 5 second 
+        if [ "$WATCHDOG_MODULE" == "$module" ]
+        then
+            watchdog -t 5 /dev/watchdog
+        fi
+    done
+}
+
+deinit()
+{
+    # Loop over every line in /etc/modules.
+    (cat /etc/modules; echo) | # make sure there is a LF at the end
+    while read module args
+    do
+        case "$module" in
+            \#*|"") continue ;;
+        esac
+        echo "  Unloading $module "
+        modprobe -q -r $module
+    done
+}
+
+start() {
+    echo "Loading $PROG: "
+    init
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+stop() {
+    echo "Unloading $PROG: "
+    deinit
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

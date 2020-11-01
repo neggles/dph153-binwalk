@@ -1,0 +1,7 @@
+/usr/sbin/flash_erase
+/usr/sbin/flashcp
+/usr/sbin/flash_unlock
+/usr/sbin/flash_info
+/usr/share/doc/mtd-utils-1.0.0-2/COPYING
+/usr/sbin/flash_eraseall
+/usr/sbin/flash_lock

@@ -1,0 +1,98 @@
+#!/bin/bash
+#
+# verifyimages
+#
+# script to verify/correct parts of the U-Boot environment
+# Must be run *after* mountoemparts because swdl_client checks for test certs
+#
+
+SWDL=/opt/ipaccess/bin/swdl_client
+BOOTCOUNT=/opt/ipaccess/bin/bootcount
+
+SWDBDAT=/var/ipaccess/sw_db.dat
+SW_ALARM_LOG_FILE_PATH="/var/ipaccess/logs/sw_alarms/"
+SW_ALARM_FILE="sw_alarm.summary"
+LOG_FILE_PATH="/var/ipaccess/logs/sw_boots"
+LOG_FILE="sw_boots.summary"
+
+
+#####################################################################################
+# Helper function: log_entry
+#####################################################################################
+log_entry()
+{
+  if [ ! -e $LOG_FILE_PATH ]
+  then
+     mkdir -p $LOG_FILE_PATH
+  fi
+
+  DATE=`date`
+  echo "$DATE $1" >> $LOG_FILE_PATH/$LOG_FILE
+  echo "$DATE $1"
+}
+#####################################################################################
+# Helper function: log_swalarm
+#####################################################################################
+log_swalarm()
+{
+  if [ ! -e $SW_ALARM_LOG_FILE_PATH ]
+  then
+     mkdir -p $SW_ALARM_LOG_FILE_PATH
+  fi
+
+  DATE=`date`
+  echo "$DATE $1" >> $SW_ALARM_LOG_FILE_PATH/$SW_ALARM_FILE
+  echo "$DATE $1"
+}
+
+
+if [ ! -f $SWDBDAT ] ; then
+  $SWDL -recoverdb
+fi
+
+if $SWDL -verbose 2 -verifyflash; then
+    # Image signatures verify OK
+    log_entry "Image signatures verify OK"
+    exit 0
+fi
+
+echo "*********************************************************"
+echo "***                Image verify failed                ***"
+echo "*********************************************************"
+
+echo "*********************************************************" >/dev/console
+echo "***                Image verify failed                ***" >/dev/console
+echo "*********************************************************" >/dev/console
+
+# Check the bootcount
+#
+# If it is 100, then we have been here before with the other bank
+# so neither bank is good. We must stop here.
+#
+# If not, we set bootcount to 99 and reboot to the other bank.
+# The value of 99 forces U-Boot to boot other bank, and gets incremented, so we check for 100 here.
+count=`$BOOTCOUNT`
+
+if [ "$count" = 100 ]; then
+
+    log_swalarm "Image verify failed - stopping"
+
+    # Set LED Red
+    echo "J" >/dev/leddriver
+
+    # Disable ethernet and stop here
+    # This is before any VLAN config, so can use "eth0"
+    ifconfig eth0 down
+    while /bin/true; do
+        sleep 10000
+    done
+fi
+
+log_swalarm "Image verify failed - rebooting to other bank"
+
+$BOOTCOUNT 99
+
+/opt/ipaccess/Utils/scripts/set_reboot_cause MISCELLANEOUS "Image verify failed"
+/sbin/reboot
+
+exit 0

@@ -1,0 +1,13 @@
+pc3xxcrypto
+pc3xxfuse
+oprofile
+leddriver
+picocrypto
+spi_pc3xx
+spi_max6662
+spi_dac7512
+keystream
+ipa_keystream
+ad7995
+tpm_atmel_twi
+dw_wdt

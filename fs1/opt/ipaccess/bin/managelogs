@@ -1,0 +1,110 @@
+#!/bin/bash
+#
+# This script manages log files by checking their size, and if above
+# a user defined limit, rotating the log file. The current log file
+# is saved with a .0 extension and then truncated. If a saved log
+# file with a .0 extension already exists, then it is deleted.
+#
+# The rotation is done either by copying the current logfile, then
+# truncating the current log file, or by renaming the current log
+# file then creating a new zero-length log file. The user can select
+# which rotation method is used in the configration file (see below).
+#
+# The copy method is useful for programs which keep their log files
+# open all the time, but needs free disk space equal to the log file
+# size limit to be available when the log is rotated.
+#
+# The rename method can be used with programs which only open their
+# log files when they need to write, and does not require any free
+# disk space to do the rotate.
+#
+# Note that either method may lose a little bit of logging information
+# when the log is rotated.
+#
+# This script just does one run through the list of log files it is
+# managing each time it is run. It is intended that this script be
+# run as a cron job, or by some other period process.
+#
+# The script uses a configuration file to tell it which log files
+# to manage, what size limit applies to each log file, and the method
+# to use to rotate the file.
+#
+# The configuraion file uses one line per log file as follows:
+#
+# <full path to logfile> <size limit in K> <rotation method>
+#
+# For example:
+#
+# /tmp/stunnel.log 512 copy
+#
+# This tells the script to managhe the /tmp/stunnel.log file, to limit
+# its size to 512K and to rotate it with the copy method.
+#
+# The configuration file can contain comment lines which have a # in the
+# first column and a space or newline in the second column. The configuration
+# file cannot contain blank lines - this will be interpreted as the end of
+# the file, and processing will stop at that point.
+#
+# The configuration file name can be supplied on the script command
+# line, or defaults to managelogs.cfg in the current directory.
+#
+
+# Setup name of configuration file, either from command line or default
+if [ "x$1" == "x" ]
+then
+  configFile="managelogs.cfg"
+else
+  configFile="$1"
+fi
+
+# Check that the configuration file exists. Abort if not.
+if [ ! -f "$configFile" ]
+then
+  echo "Configuration file $configFile does not exist, aborting"
+  exit 1
+fi
+
+# Take input from the configuration file
+exec < $configFile
+
+# Read the first line of configuration file
+read file sizeLimit action
+
+# Process each line in the configuration file.
+while [ "x$file" != "x" ]
+do
+  # Skip comment lines
+  if [ "$file" != "#" ]
+  then
+    if [ -f "$file" ]
+    then
+      size=`du -s $file | awk '{ print $1 }'`
+    
+      if [ $size -gt $sizeLimit ]
+      then
+        echo -n "Log file $file is over limit of ${sizeLimit}K - rotating logs...."
+        if [ $action == "copy" ]
+        then
+          cp $file $file.0
+          echo -n > $file
+          echo " copied"
+        else
+          if [ $action == "rename" ]
+          then
+            rm -f $file.0
+            mv $file $file.0
+            echo -n > $file
+            echo " moved"
+          else
+            echo " ERROR: Action '$action' not recognised - using copy method."
+            cp $file $file.0
+            echo -n > $file
+          fi
+        fi
+      fi
+    fi  
+  fi
+
+  # Read next line of configuration file
+  read file sizeLimit action
+done

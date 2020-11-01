@@ -1,0 +1,63 @@
+#!/bin/bash
+#
+# functions        shell functions common to more than one script
+# 
+
+export TRUE=1
+export FALSE=0
+
+LOG_FILE_PATH="/var/ipaccess/logs/sw_boots"
+LOG_FILE="sw_boots.summary"
+SW_ALARM_LOG_FILE_PATH="/var/ipaccess/logs/sw_alarms/"
+SW_ALARM_FILE="sw_alarm.summary"
+
+
+#####################################################################################
+# FUNCTION: is_app_running
+# check whether an application is already runing
+# ARGUMENTS
+#  $1   application name to test if running
+# RETURN:
+# 1 if running
+# 0 if not running
+#####################################################################################
+is_app_running()
+{
+    pid=`pidof -o $$ -o $PPID -o %PPID $1`
+    if [ -n "$pid" ]; then
+        # application running
+        return $TRUE
+    else
+        # application not running"
+        return $FALSE
+    fi
+}
+
+#####################################################################################
+# Helper function: log_entry
+#####################################################################################
+log_entry()
+{
+  if [ ! -e $LOG_FILE_PATH ]
+  then
+     mkdir -p $LOG_FILE_PATH
+  fi
+
+  DATE=`date`
+  echo "$DATE $1" >> $LOG_FILE_PATH/$LOG_FILE
+  echo "$DATE $1"
+}
+#####################################################################################
+# Helper function: log_swalarm
+#####################################################################################
+log_swalarm()
+{
+  if [ ! -e $SW_ALARM_LOG_FILE_PATH ]
+  then
+     mkdir -p $SW_ALARM_LOG_FILE_PATH
+  fi
+
+  DATE=`date`
+  echo "$DATE $1" >> $SW_ALARM_LOG_FILE_PATH/$SW_ALARM_FILE
+  echo "$DATE $1"
+}

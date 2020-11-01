@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# checkipconfig – script to install a suitable default ipconfig.dat
+# after factory restore
+#
+GETVARVAL=/opt/ipaccess/Utils/scripts/getVarVal
+HW_DESC=/var/ipaccess/hw_description.dat
+AP_PARTNUM=`$GETVARVAL $HW_DESC PCB_ASSEMBLY_PART_NUM`
+
+cnfPATH=/var/ipaccess
+cisco_ipconfig=/opt/oem
+ipa_ipconfig=/opt/ipaccess
+
+if [ ! -f $cnfPATH/ipconfig.dat ]; then
+    # config file is missing, copy over default
+
+    # For Band 2/5 or Band 4 variant (router is present) use Cisco file
+    AP_VARIANT=`echo $AP_PARTNUM | cut -c4`
+    case "$AP_VARIANT" in
+        B|C)
+            if [ -f $cisco_ipconfig/ipconfig.dat ]; then
+                cp -f $cisco_ipconfig/ipconfig.dat $cnfPATH/ipconfig.dat
+            else
+                echo "can't find default ipconfig.dat for DPH151 with router"
+            fi
+    esac
+fi
+
+# If Band 1 (no router) or Cisco file missing, fall through to IPA default
+if [ ! -f $cnfPATH/ipconfig.dat ]; then
+    if [ -f $ipa_ipconfig/ipconfig.dat ]; then
+        cp -f $ipa_ipconfig/ipconfig.dat $cnfPATH/ipconfig.dat
+    else
+        echo "can't find default ipconfig.dat for DPH151A"
+    fi
+fi

@@ -1,0 +1,9 @@
+Package: procps
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 3.2.7-2
+Description: procps tool - ps top snice
+Source: MKS: e:/sie/3gap/src/cpe/target/application/thirdparty/procps

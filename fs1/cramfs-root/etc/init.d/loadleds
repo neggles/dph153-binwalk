@@ -1,0 +1,88 @@
+#!/bin/bash
+
+# This script is used to configure the LED device driver
+#
+# (c) ip.access 2000-2008
+#
+
+# The LED device driver supports upto 2 instances.
+# These are presented as /dev/leddriver0 and /dev/leddriver1
+# For legacy support /dev/leddriver is a symlink to /dev/leddriver0
+
+# Terminology:
+#
+# Pattern: = this is a mark space ratio with On & Off times in ms
+#   e.g. patterns are defined as:
+#    {   50,   50 }, // 0: flashPattern 0 (fast on-off) ( ratio 1:1, 10 cycles per sec)
+#    {   50,  200 }, // 1: flashPattern 1 (short On blink)
+#    {  300,   50 }, // 2: flashPattern 2 (short Off blink)
+#    {  200, 1800 }, // 3: Short Blink on (ratio 1:9) 2 sec cycle
+#    { 1000, 1000 }, // 4: Even Flash     (ratio 1:1) 2 sec cycle
+#    { 1800,  200 }, // 5: Short Blink Off (ratio 9:1) 2 sec cycle
+#
+#
+# Sequence: = this is a series of 'Patterns' that the LED device driver will iterate through
+#
+#    // Pattern|GPIO: ON_hi|ON_lo |OFF_hi |OFF_lo |RepeatCount |Del before next patt |next_sequence
+#    {     3,          36,     0,   32,     0, INDEFINITE_REPEAT,       0,     0}, // Indefinite short blinks (pattern 3)
+#
+#  or a more complex S.O.S pattern:
+#
+#    // Pattern|GPIO: ON_hi|ON_lo |OFF_hi |OFF_lo |RepeatCount |Del before next patt |next_sequence
+#    {     1,          36,     0,   32,     0,        3,              500,            1}, // S
+#    {     2,          36,     0,   32,     0,        3,              500,            2}, // O
+#    {     1,          36,     0,   32,     0,        3,              1000,           0}, // S
+#          
+#
+# Only the following GPIO lines can be controlled:
+#    GPIO  Val       Nominal Purpose
+#    -----------------------------------------------------------------
+#       2   4        Service LED (Green)
+#       5   32       Sys LED (Red - Active LOW, Green when HI)
+#       6   64       Customer extension (Red)
+#       7   128      Customer extension (Green) - e.g. GPS status
+#
+#   In the sequence table the GPIO_ON_hi is the bitmap of IO lines that are turned High (when the ON period is shown)
+#   In the sequence table the GPIO_ON_Lo is the bitmap of IO lines that are turned Low (when the ON period is shown)
+#   GPIO_OFF_hi is the bitmap of IO lines that are turned High (when the OFF period in the pattern is displayed)
+#   GPIO_OFF_low is the bitmap of IO lines that are turned Low (when the OFF period in the pattern is displayed)
+#
+#   Note that the GPIO_5 (SysLedRED is GREEN when HIGH, and RED when Low) - so to ensure it stays Green
+#   You need to add 2<<5 (32) to the GPIO_ON_hi and GPIO_OFF_hi in all sequences
+#
+
+# To customise the device driver - you need to write to the /proc/ filesystem
+#
+# /proc/driver/leddriver/patterns
+# /proc/driver/leddriver/sequences
+#    
+#
+# format of patterns (up to 10 patterns 0-9 can be added) in the form devInstance:PatternIndex, On period, Off period
+#   0:0,0,1             # Note that if the timeout is 1 then this stops the timer (here in the OFF period)
+#   0:1,1,0             # Note that if the timeout is 1 then this stops the timer (here in the ON period)
+#   0:2,50,50
+#   0:3,50,200
+#   0:4,300,50
+#   0:5,200,1800
+#   0:6,1000,1000
+#   0:7,1800,200
+
+
+#
+# format of sequences (up to 12 Sequences A-L can be added)
+#    in the form devInstance:SequenceIndex,numStates,"SequenceName",
+#        {Pattern, gpioOnHigh, gpioOnLow,gpioOffHigh,gpioOffLow,RepeatCount,Del before next patt, nextState}
+# 0:A,1,No IP Address (off),{0,32,0,32,0,-1,0,0}
+# 0:B,1,Not Provisioned,{5,36,0,32,4,-1,0,0}
+# 0:C,1,Provisioned,{6,36,0,32,4,-1,0,0}
+# 0:D,1,In Test,{6,36,0,32,4,-1,0,0}
+# 0:E,1,No Service,{7,36,0,32,4,-1,0,0}   // Alt is : {7,96,4,32,68,-1,0,0}
+# 0:F,1,Service Available (on),{1,36,0,32,4,-1,0,0}
+# 0:G,1,Button Pressed,{2,36,0,32,4,-1,0,0}
+# 0:H,1,Factory Restore,{3,36,0,32,4,-1,0,0}
+# 0:I,1,Firmware Upgrade,{4,36,0,32,4,-1,0,0}
+# 0:J,1,Fault (red),{1,0,36,0,36,-1,0,0}  // Fault uses Sys LED Red (Turn 32 OFF!)
+# 0:K,3,SOS,{3,36,0,32,4,3,500,1},{4,36,0,32,4,3,500,2},{3,36,0,32,4,3,1000,0}
+#
+
+cat /opt/cisco/dph151/ledsequences > /proc/driver/leddriver/sequences

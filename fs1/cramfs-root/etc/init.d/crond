@@ -1,0 +1,77 @@
+#!/bin/bash
+#
+# crond        Startup the cron daemon
+#
+
+. /etc/init.d/functions
+
+PROG="crond"
+APP=/usr/sbin/crond
+RETVAL=0
+
+init()
+{
+    if [ -a $APP ]
+    then
+        # Create /var/spool/cron/crontabs directory
+        mkdir -p /var/spool/cron/crontabs
+        # Copy over default crontabs
+        cp /opt/ipaccess/cron/crontabs/* /var/spool/cron/crontabs/
+        # Start cron with this local directory and logging level set to 1
+        $APP -l 1
+    else
+        echo -n $PROG" not found"
+        RETVAL=-1
+    fi
+}
+
+start() {
+    echo -n "Starting $PROG: "
+    is_app_running $PROG
+    if [ $? != $TRUE ]; then
+        init
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+            echo OK
+        else
+            echo FAILURE
+        fi
+    else
+        echo "FAILURE (already running)"
+    fi
+}
+
+stop() {
+    echo -n "Stopping $PROG: "
+    kill -9 `pidof -o $$ -o $PPID -o %PPID $PROG` >/dev/null 2>&1
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

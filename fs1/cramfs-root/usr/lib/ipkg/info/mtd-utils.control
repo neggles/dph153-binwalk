@@ -1,0 +1,9 @@
+Package: mtd-utils
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version:1.0.0-2
+Source: MKS Thirdparty 
+Description: MTD utils

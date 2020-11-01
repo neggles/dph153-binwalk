@@ -1,0 +1,15 @@
+#
+# This is run first except when booting in single-user mode.
+#
+::sysinit:/etc/init.d/rcS
+
+# startgetty starts getty on correct tty
+::respawn:/etc/init.d/startgetty
+
+# Stuff to do when restarting the init process
+::restart:/sbin/init
+
+# Stuff to do before rebooting
+::ctrlaltdel:/opt/ipaccess/Utils/scripts/reboot
+::shutdown:/opt/ipaccess/Utils/scripts/reboot
+

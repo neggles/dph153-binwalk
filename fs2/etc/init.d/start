@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+
+
+PROG="start"
+RETVAL=0
+
+start() {
+    echo -n "Starting $PROG: "
+    echo 1 > /tmp/bootstatus
+    echo "OK"
+}
+
+stop() {
+    echo -n "Stopping $PROG: "
+    echo 0 > /tmp/bootstatus
+    echo "OK"
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

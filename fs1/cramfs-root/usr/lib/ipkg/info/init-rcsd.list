@@ -1,0 +1,15 @@
+/etc/rcS.d/S05syslog
+/etc/rcS.d/S01cpu_alignment
+/etc/rcS.d/S03lastreboot
+/etc/rcS.d/S04verifyimages
+/etc/rcS.d/S07dhcp
+/etc/rcS.d/S11fallbackdate
+/etc/rcS.d/S02mountoemparts
+/etc/rcS.d/S87startmode
+/etc/rcS.d/S83tcpdump
+/etc/rcS.d/S08random
+/etc/rcS.d/S00start
+/etc/rcS.d/S99end
+/etc/rcS.d/S01loadmodules
+/etc/rcS.d/S13crond
+/etc/rcS.d/S03ubootenvcheck

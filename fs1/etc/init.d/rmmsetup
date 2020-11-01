@@ -1,0 +1,28 @@
+#!/bin/sh
+
+####################################################################################
+# This part of the script makes sure there is a default MetaFileVersion
+# Try to get the version from the ipackage info file. If none fallback to 5.0.0
+####################################################################################
+
+base=/var/ipaccess/cisco
+
+RMMSETUP="${base}/`awk '/^Version:/{print \"rmmsetup-\" $2}' /opt/cisco/control`"
+[ -x ${RMMSETUP} ] && exec ${RMMSETUP} $*
+
+if [ ! -d ${base} ]; then
+	mkdir -p ${base}
+fi
+
+meta=${base}/DefaultFileVersion
+
+ver=`grep Version /usr/lib/ipkg/info/rmm.control | sed -e '1,$s/Version: //g' -e '1,$s/bc.*//g' -e '1,$s/debug.*//g'`
+if [ "${ver}" = "" ]; then
+	ver="5.0.0"
+fi
+echo "FAP Software Version: ${ver}" > ${meta}
+# adding seed to urandom to ensure uniqueness after reboot
+date > /dev/urandom
+cat /proc/interrupts > /dev/urandom
+
+exit

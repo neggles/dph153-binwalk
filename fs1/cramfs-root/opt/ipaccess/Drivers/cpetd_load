@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# User can supply the number of devices to create - defautls to 1
+if test $1
+then
+    numDevs=$1
+    if [ ${numDevs} -eq 0 ]
+    then
+        numDevs=1
+    fi
+else
+    numDevs=1
+fi
+
+module="cpetd"
+major="240"
+
+# invoke insmod with all arguments we got
+# and use a pathname, as newer modutils don't look in . by default
+/sbin/insmod -f ./$module.ko cpetdNumDevs=${numDevs} cpetdMajor=${major} || exit 1
+

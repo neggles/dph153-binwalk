@@ -1,0 +1,478 @@
+#!/bin/bash
+#
+# diagupload - upload log files etc via HTTP(S)
+#
+# output file will be named, for example;
+#    apdiaglogs_000295-AP-0000004005_1238761575_demand.apd
+#
+ME=`basename $0`
+
+# lower priority of this script (and its children)
+renice -n 10 $$
+
+if [ -f /var/ipaccess/nv_env.sh ]; then
+    source /var/ipaccess/nv_env.sh
+else
+    echo "ERROR: $ME: nv_env.sh is missing"
+    exit 1
+fi
+
+GETVARVAL=/opt/ipaccess/Utils/scripts/getVarVal
+HWDESC=/var/ipaccess/hw_description.dat
+BBMGRCFG=/var/ipaccess/config/baseband_mgr.cfg
+VARLOG=/var/log/*
+APDIAG_FILES="/tmp/ap_diag_log*"
+CDRLOG_FILES="/tmp/cdr/* /var/ipaccess/logs/cdr/*"
+HOLOG_FILES="/tmp/ho/* /var/ipaccess/logs/ho/*"
+TCPDUMP_FILES=/tmp/tcpdump.pcap*
+CUSTTRACE_FILES=/tmp/logs/ipacusttrace*
+PM_FILES=/tmp/pmlogs/*.xml
+SWALARMS=/var/ipaccess/logs/sw_alarms/*
+SWBOOTS=/var/ipaccess/logs/sw_boots/*
+APRESTARTS="/var/ipaccess/logs/reboots/* /tmp/.reboot_cause*"
+CONF_FILES=/var/ipaccess/config/*.cfg
+PROCMON_FILES=/tmp/procmon/*
+IAPC_FILES=/tmp/iapclogs/*
+TMPDIR=/var/tmp
+MISC_FILES="$TMPDIR/* /tmp/consolelog* /tmp/dmi_session_log* /tmp/rrmCfg.bin /var/ipaccess/*.dat /var/ipaccess/nv_env.sh"
+PICO_CORE=$($GETVARVAL $BBMGRCFG PICO_CORE_FILE)
+SERIAL_NUM=$($GETVARVAL $HWDESC SERIAL_NUMBER)
+UPLOAD=/opt/ipaccess/bin/uploadFile.sh
+DIAGDEBUG=/tmp/diagdebugtmp
+NO_UPLOAD=0
+ARCHIVE_FORMAT=newz
+URL=
+REASON=demand
+FILENAME=
+PERSISTEDFILENAME=/var/ipaccess/diagfile_name.txt
+NTP_STATS=/var/ipaccess/ntp/ntpstats/*stats*
+PCRYPTO_DIR=/sys/bus/platform/drivers/pico-crypto-ipsec
+LOCK_FILE=/tmp/diagupload.lock
+DSCP=
+PHYDIAG_TRACE_FILE=/tmp/capture.phydiag.bin
+PHYDIAG_CONFIG_FILE=/tmp/phydiagconfig
+PHYDIAG_PA_FILE=/opt/ipaccess/bin/phy3g.pa
+MEMTRACEFILES="/tmp/3gctrlApp_mem_stats.log /tmp/uplayerApp_mem_stats.log /tmp/rrm_mem_stats.log /tmp/ma_mem_stats.log"
+GOT_LOCK=0
+
+usage()
+{
+    echo "USAGE: $ME [-h|--help] [--no-upload] [--format=FORMAT] [--dscp=VALUE] [--filename=NAME] [--reason=demand|restart|etc.] [--url=URL]"
+    echo " -h|--help              show this help text"
+    echo " --no-upload            just generate tar file and don't attempt to upload it"
+    echo "                        (default: false)"
+    echo " --format=FORMAT        create an archive file in the specified format"
+    echo "                        (old|newb|newz default: $ARCHIVE_FORMAT)"
+    echo " --reason=STRING        specify reason for generating diag info, this should be an alphanumeric"
+    echo "                        string up to 64 character (default: demand)"
+    echo " --filename=NAME        specify name of the diag file, if this is missing,"
+    echo "                        the NAME is generated automatically"
+    echo " --dscp=VALUE           DSCP value to be used while upload"
+    echo " --url=URL              specify alternate upload URL, if this is missing the"
+    echo "                        URL will be read from /var/ipaccess/nv_env.sh"
+}
+
+# copy a (text) file without needing to fork to cp
+do_copy()
+{
+    if [ -f $1 ]; then
+        numlines=0
+        while read line; do
+            echo $line >> $2
+            # just in case one of the files (particularly proc ones)
+            # gets larger than expected.
+            let numlines=$numlines+1
+            if [ $numlines -gt 150 ]; then
+                echo "EXCEEDED LINE COUNT" >> $2
+                break
+            fi
+        done < $1
+    fi
+}
+
+copy_file()
+{
+    :>$2
+    do_copy $1 $2
+}
+
+append_file()
+{
+    do_copy $1 $2
+}
+
+create_apinfo_files()
+{
+    copy_file /etc/sw_description.dat   $TMPDIR/sw_description
+    date                             >  $TMPDIR/system_time
+    uptime                           >  $TMPDIR/uptime
+    append_file /proc/uptime            $TMPDIR/uptime
+    last                             >  $TMPDIR/last_logins
+    /usr/local/bin/ps aux            >  $TMPDIR/process_list
+    copy_file /proc/meminfo             $TMPDIR/meminfo
+    df -h                            >  $TMPDIR/filesys_usage
+    df -i                            >  $TMPDIR/filesys_inodes
+    copy_file /proc/mounts              $TMPDIR/filesys_mounts
+
+    pushd /sys/class/net/ > /dev/null
+    for i in eth*; do
+        ifconfig $i                  >  $TMPDIR/ifconfig_$i
+    done
+    popd > /dev/null
+
+    uname -a                         >  $TMPDIR/kernel_version
+    copy_file /proc/modules             $TMPDIR/kernel_modules
+    ntpq -npcrv                      >  $TMPDIR/ntpinfo.txt   2>/dev/null
+    ipsec listcerts                  >  $TMPDIR/ipsec_certs
+    ipsec statusall                  >  $TMPDIR/ipsec_statusall
+    ip xfrm state                    >  $TMPDIR/ipsec_keys
+    ip route show table all          >  $TMPDIR/ip_route_show
+
+    if [ -d $PCRTYPTO_DIR ]; then
+        cat $PCRYPTO_DIR/show_mode  >  $TMPDIR/picocrypto_info
+        cat $PCRYPTO_DIR/show_stats >> $TMPDIR/picocrypto_info
+    fi
+
+    :>  $TMPDIR/crash_core_list
+    for d in /tmp/cores/ /tmp/crash_logs /var/ipaccess/cores; do
+        if [ -d $d ]; then
+            ls -lAR /tmp/cores/ >> $TMPDIR/crash_core_list
+        fi
+    done
+
+    # generate a single file containing a bunch of different debug
+    # information, done this way as each file would consume a minimum
+    # of 4Kb so this saves memory.
+    rm -f $TMPDIR/gendebug.gz
+    :> $TMPDIR/gendebug
+    for pfile in /proc/stat             \
+                 /proc/slabinfo         \
+                 /proc/vmstat           \
+                 /proc/buddyinfo        \
+                 /proc/diskstats        \
+                 /proc/net/snmp         \
+                 /proc/net/sctp/snmp    \
+                 /proc/net/ip_conntrack \
+                 /proc/net/sockstat     \
+                 /proc/net/netstat      \
+                 /proc/net/tcp          \
+                 /proc/net/udp; do
+        echo "STARTFILE $pfile" >> $TMPDIR/gendebug
+        append_file $pfile         $TMPDIR/gendebug
+        echo "ENDFILE $pfile"   >> $TMPDIR/gendebug
+    done
+    gzip $TMPDIR/gendebug
+
+    if [ ! -f $TMPDIR/ssh_pub_key ]; then
+        get_reverse_ssh_key > $TMPDIR/ssh_pub_key
+    fi
+
+    if [ ! -f $TMPDIR/ipkg_installed ]; then
+        ipkg list_installed > $TMPDIR/ipkg_installed
+    fi
+}
+
+do_upload()
+{
+    # if we're doing a secure upload then we need to supply the CRL 
+    # base address too
+    CRL_URL=
+    if [ "${URL:0:5}" = "https" ]; then
+        if [ -n "$ENV_CRL_BASE_SERVER" ]; then
+            CRL_URL="--crlbaseurl $ENV_CRL_BASE_SERVER"
+        fi
+        echo "Uploading diag logs securely to $URL"
+    else
+        echo "Uploading diag logs insecurely to $URL"
+    fi
+    /opt/ipaccess/bin/ipacurl -f -T $1 $DSCP $CRL_URL $URL/$FILENAME -y 30 -Y 1
+}
+
+# prevent multiple instances
+function get_lock()
+{
+    (set -C; : > $LOCK_FILE) 2> /dev/null
+    if [ $? = 0 ]; then
+        trap 'rm -f $LOCK_FILE' EXIT
+        GOT_LOCK=1
+    fi
+}
+
+# process command line arguments
+for p in $*
+do
+    case $p in
+        --no-upload)
+        NO_UPLOAD=1
+        ;;
+        --dscp=*)
+        DSCP=`echo $p | sed 's/[-a-zA-Z0-9]*=//'`
+        if [ $DSCP -gt 63 ]; then
+            echo "ERROR: $ME: Wrong DSCP value $DSCP"
+            exit 1
+        fi
+        DSCP="--dscp $DSCP"
+        ;;
+        --reason=*)
+        REASON=`echo $p | sed 's/[-a-zA-Z0-9]*=//'`
+        ;;
+        --filename=*)
+        FILENAME=`echo $p | sed 's/[-a-zA-Z0-9]*=//'`
+        ;;
+        --url=*)
+        URL=`echo $p | sed 's/[-a-zA-Z0-9]*=//'`
+        ;;
+        --format=*)
+        ARCHIVE_FORMAT=`echo $p | sed 's/[-a-zA-Z0-9]*=//'`
+        ;;
+        *|--help|-h)
+        usage
+        exit 1
+        ;;
+    esac
+done
+
+# if no upload URL is provided on the command line use the
+# crash reporting URL from nv_env
+if [ "$URL" = "" ]; then
+    URL=$ENV_CRASH_REPORT_URL
+fi
+
+# if --no-upload wasn't specified and there's no URL available
+# then abort to save wasting time
+if [ $NO_UPLOAD = 0 -a "$URL" = "" ]; then
+    echo "$ME: no upload URL provided"
+    echo "  Run 'diagupload --no-upload' if you just want to generate the"
+    echo "  archive but not upload it."
+    exit 1
+fi
+
+# take the lock to prevent concurrent runs as this ends up corrupting
+# the temporary files. If this is a crash/restart then kill off the
+# previous instance otherwise we will lose the crash log.
+# For all other reasons just exit.
+get_lock
+if [ $GOT_LOCK = 0 ]; then
+    if [ "$REASON" = "crash" -o "$REASON" = "restart" ]; then
+        echo "$ME: previous instance running, will kill it"
+        # kill all instances of diagupload except myself
+        for pid in `pgrep diagupload`; do
+            if [ $pid != $$ ]; then
+                echo "$ME: killing PID $pid"
+                kill $pid
+            fi
+        done
+        # lock should be released now, but give it a little
+        # time just in case
+        SECONDS=0
+        while [ $SECONDS -lt 120 ]; do
+            get_lock
+            if [ $GOT_LOCK = 1 ]; then
+                break
+            fi
+            sleep 5
+        done
+        if [ $GOT_LOCK = 0 ]; then
+            echo "$ME: failed to get lock, giving up"
+            exit 2
+        fi
+    else
+        echo "$ME: previous instance running, aborting"
+        exit 2
+    fi
+fi
+
+# Clean up any previous apdiaglog files. This could be a file left behind
+# if previous diagupload run failed in some unexpected way or a file
+# generated with --no-upload.
+# i.e. ensure we only have 1 apdiaglog file in /tmp/ at a time
+rm -f /tmp/apdiaglogs*.tar.gz /tmp/apdiaglogs*.apd $DIAGDEBUG
+
+#Check DSCP value
+if [ "$DSCP" = "" ] && [ "$DSCP_ACS" != "" ]; then
+    DSCP="--dscp $DSCP_ACS"
+fi
+
+echo "Generating diag file list"
+create_apinfo_files
+
+# NOTE: files are added in approximate order of importance as the upload
+#       could be truncated over slow connections - also need to take size
+#       into account, which is why tcpdump files go at the end.
+# First file will be a description of the archive
+ARCHIVE_TIMESTAMP=`date +%s`
+echo "cause=$REASON"                 > /tmp/archiveDescription
+echo "serialNumber=$SERIAL_NUM"     >> /tmp/archiveDescription
+echo "timeStamp=$ARCHIVE_TIMESTAMP" >> /tmp/archiveDescription
+DFILES="/tmp/archiveDescription"
+
+# crash logs go first
+for m in "/var/ipaccess/cores /tmp/crash_logs"; do
+    CFILES="`find $m -mmin -5 -type f -name crash_*`"
+    if [ "$CFILES" != "" ]; then
+        DFILES="$DFILES $CFILES"
+    fi
+done
+
+# files or masks to upload
+DFILES="$DFILES $SWALARMS $SWBOOTS $APDIAG_FILES $CUSTTRACE_FILES $MISC_FILES $VARLOG"
+DFILES="$DFILES $APRESTARTS $PROCMON_FILES $PM_FILES $NTP_STATS $CDRLOG_FILES $HOLOG_FILES $CONF_FILES $IAPC_FILES"
+# add files/masks specified in nv_env if any
+if [ "$ENV_DIAG_FILE_LIST" != "" ]; then
+    DFILES="$DFILES $ENV_DIAG_FILE_LIST"
+fi
+
+# add all files/masks defined in the /opt/oem/diagfiles file
+if [ -s /opt/oem/diagfiles ]; then
+    while read line; do
+        if [ "$line" = "" -o "${line:0:1}" = "#" ]; then
+            continue
+        fi
+        DFILES="$DFILES $line"
+    done < /opt/oem/diagfiles
+fi
+
+# capture all core files which are less than 5 minutes old
+for m in "/tmp/cores /var/ipaccess/cores"; do
+    CFILES="`find $m -mmin -5 -type f -name core_*`"
+    if [ "$CFILES" != "" ]; then
+        DFILES="$DFILES $CFILES"
+    fi
+done
+# add pico core dump and tcpdump captures
+DFILES="$DFILES $PICO_CORE $TCPDUMP_FILES"
+
+#Add MemTrace files
+DFILES="$DFILES $MEMTRACEFILES"
+
+#
+# If not disabled, create and add phydiag files (default is enabled)
+#
+if [ "$ENV_DIAG_PHYDIAG_DISABLED" != "TRUE" ]; then
+    #
+    # Don't create a trace if this is a call drop, unless specifically enabled
+    #
+    if [ "$ENV_DIAG_PHYDIAG_CALLDROP_ENABLED" = "TRUE" ] || [ "$REASON" != "calldrop" ]; then
+        #
+        # Check to see if trace length to be dumped has been specified
+        # If not, default to 250,000 bytes
+        #
+        if [ "$ENV_DIAG_PHYDIAG_LENGTH" != "" ]; then
+            #
+            # Check its a number
+            #
+            expr $ENV_DIAG_PHYDIAG_LENGTH + 1 2> /dev/null > /dev/null
+            if [ $? = "0" ]; then
+                trace_length=$ENV_DIAG_PHYDIAG_LENGTH
+            else
+                echo "ENV_DIAG_PHYDIAG_LENGTH must be an integer. Its currently $ENV_DIAG_PHYDIAG_LENGTH"
+                trace_length=250000
+            fi
+        else
+            trace_length=250000
+        fi
+    
+        #
+        # Check whether we should allow phydiag trace capture from a running PHY
+        #
+        if [ "$ENV_DIAG_PHYDIAG_ALLOW_RUNNING" = "TRUE" ] || [ "$REASON" = "calldrop" ]; then
+            PHYDIAG_FLAGS=-r
+        else
+            PHYDIAG_FLAGS=
+        fi
+        
+        #
+        # Note we redirect error output to /dev/null as the picoif library prints lots of debug output which slows up the dump
+        #
+        phydiag_capture -c $PHYDIAG_CONFIG_FILE -o $PHYDIAG_TRACE_FILE -p $PHYDIAG_PA_FILE -l $trace_length $PHYDIAG_FLAGS 2> /dev/null
+        if [ $? = "0" ]; then
+            echo "Captured phydiag trace"
+            DFILES="$DFILES $PHYDIAG_CONFIG_FILE $PHYDIAG_TRACE_FILE"
+        else
+            echo "Failed to capture phydiag trace"
+        fi
+    fi
+fi
+
+# now process the list of masks/files to remove missing files and
+# resolve symlinks
+DIAGFILES=""
+# don't print unexpanded masks
+shopt -s nullglob
+for m in $DFILES; do
+    # resolve symbolic links
+    if [ -h "$m" ]; then
+        m=`readlink -f ${m}`
+    fi
+    if [ -f "$m" ]; then
+        DIAGFILES="$DIAGFILES $m"
+    fi
+done
+
+# check that we found any files
+if [ "$DIAGFILES" = "" ]; then
+    echo "No diag files to upload"
+    exit 1
+fi
+
+# now add them all to a single tar archive - don't know how well
+# they will compress so can't check if we have enough free space.
+
+if [ "$FILENAME" = "" ]; then
+    if [ "$ARCHIVE_FORMAT" = "old" ]; then
+        FILENAME=apdiaglogs_${SERIAL_NUM}_${ARCHIVE_TIMESTAMP}_$REASON.tar.gz
+    else
+        FILENAME=apdiaglogs_${SERIAL_NUM}_${ARCHIVE_TIMESTAMP}_$REASON.apd
+    fi
+fi
+
+OUTFILE=/tmp/$FILENAME
+
+if [ "$REASON" = "restart" -o "$REASON" = "crash" ]; then
+#log the filename so that mgrapp can update it in the MIB
+    echo "$FILENAME" > $PERSISTEDFILENAME
+fi
+
+echo -n "Creating $OUTFILE.. "
+
+# make 3 attempts at generating the archive, it may fail if one of the
+# source files changes while being packed so just have another go. If the
+# final attempt fails we'll just upload the partial file anyway.
+for try in 1 2 3; do
+    rm -f $OUTFILE
+    if [ "$ARCHIVE_FORMAT" = "old" ]; then
+        tar czf $OUTFILE $DIAGFILES > $DIAGDEBUG 2>&1
+    elif [ "$ARCHIVE_FORMAT" = "newz" ]; then
+        diagarchive -zf $OUTFILE $DIAGFILES > $DIAGDEBUG 2>&1
+    elif [ "$ARCHIVE_FORMAT" = "newb" ]; then
+        diagarchive -jf $OUTFILE $DIAGFILES > $DIAGDEBUG 2>&1
+    else
+        echo "Invalid archive format"
+        exit 1
+    fi
+
+    if [ $? != 0 ]; then
+        # failed to create tar.. likely short read or not enough space
+        echo "Failed to create file (attempt #${try})"
+        cat $DIAGDEBUG
+    else
+        echo "done"
+        break
+    fi
+done
+
+# Delete phyDiag files, if present
+#
+if [ -f $PHYDIAG_TRACE_FILE ]; then
+    rm -f $PHYDIAG_TRACE_FILE
+fi
+
+if [ -f $PHYDIAG_CONFIG_FILE ]; then
+    rm -f $PHYDIAG_CONFIG_FILE
+fi
+
+if [ $NO_UPLOAD = 0 ]; then
+    do_upload $OUTFILE
+    # delete temporary tar file
+    rm -f $OUTFILE
+fi

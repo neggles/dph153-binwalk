@@ -1,0 +1,75 @@
+#!/bin/sh
+#
+# dmistart         configure the Nano commissioning to start MgrApp and DMI in telnet mode
+#
+. /etc/init.d/functions
+
+DMIBINNAME=ipa-dmi
+DMIPIDFILE=/var/run/${DMIBINNAME}.pid
+DMI_TELNET_PORT=8090
+PROG_DMI=/opt/ipaccess/DMI/${DMIBINNAME}
+
+
+RETVAL=0
+
+create_dmi_pid()
+{
+  _pid=`pgrep -o ${DMIBINNAME}`
+  if [ "${_pid}"+ != ""+ ]; then
+    echo ${_pid} > ${DMIPIDFILE}
+  fi
+}
+
+dmistop()
+{
+  # stop dmi application started as part of opnormal start, if still running
+  if [ -f ${DMIPIDFILE} ]; then 
+    _pid=`cat ${DMIPIDFILE}`
+    if [ "${_pid}"+ != ""+ ] && [ -d /proc/${_pid} ] ; then
+      kill -9 ${_pid}
+    fi
+    rm -f ${DMIPIDFILE}
+  fi
+}
+
+start() {
+    /opt/ipaccess/MgrApp/mgr_app.sh start
+
+    echo -n "Starting DMI: "
+    if [ -x ${PROG_DMI} ]; then
+        echo "Running DMI in telnet mode"
+        ${PROG_DMI} -u ${DMI_TELNET_PORT} &
+        create_dmi_pid        
+    fi
+
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+stop()
+{
+    /opt/ipaccess/MgrApp/mgr_app.sh stop
+	dmistop
+}
+
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+    	;;
+    restart)
+        stop
+        start
+    	;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

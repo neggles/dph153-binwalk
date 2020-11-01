@@ -1,0 +1,8 @@
+Package: i2c-tools
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Version: 3.0.2
+Source: MKS i2c-tools
+Description: I2C Tools

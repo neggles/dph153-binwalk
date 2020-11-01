@@ -1,0 +1,8 @@
+get apAlarmEventLog apActiveAlarmsList_001 administrativeState operationalState availabilityStatus diagnosticTuning currentPcbTemperature hnbCId rncIdentity
+get scramblingCode uarfcnDownlink uarfcnUplink hnbGwAddress dhcpLeaseTime lcsLatitude lcsLongitude lcsUncertainty lac rac mnc mcc
+get rfParamsCandidateList rssiScanBands_001 rfScanControl nextRfScanTime estimatedFreqOffset macroCoverage ipsecIpAddress currentLocalTime
+get umtsUlResults_001
+get savedNwlResults_001
+get cellResults_001
+get rssiResults_001
+get interFrequencyNeighbourCells intraFrequencyNeighbourCells gsmNeighbourCells

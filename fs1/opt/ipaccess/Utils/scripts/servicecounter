@@ -1,0 +1,66 @@
+#!/bin/bash
+#
+# script intended to be run every hour from a cron task
+# to increment a service counter
+#
+COUNTERFILE=/var/ipaccess/service_counter.dat
+COUNTERLOG=/var/ipaccess/service_counter_history.dat
+GETVARVAL=/opt/ipaccess/Utils/scripts/getVarVal
+SETVARVAL=/opt/ipaccess/Utils/scripts/setVarVal
+NEW_VAL=0
+
+function truncate_file()
+{
+    NUM_LINES="`wc -l $1 2>/dev/null | awk '{print $1}'`"
+    MAX_LINES=$2
+    if [ "$NUM_LINES" -gt "$MAX_LINES" ]; then
+        logger "truncating $1"
+        tail -n $MAX_LINES $1 > ${1}_new
+        mv ${1}_new $1
+    fi
+}
+
+function get_new_service_counter_val()
+{
+    local n
+    local l
+    # read each line of file into an array - the file should only ever have
+    # 4 lines in it, in config_file_util style format
+    n=0
+    while read line; do
+        l[$n]=$line
+        let n=n+1
+    done < $COUNTERFILE
+
+    # if second and third line are "decimal" and "1" assume forth line is value
+    # if the value isn't actually an integer this will be sorted out when the
+    # math function is applied below (it'll return 1)
+    if [ "${l[1]}" = "decimal" -a "${l[2]}" = "1" ]; then
+        CURRENT_VAL=${l[3]}
+    fi
+    # first line is not as expected, this has been seen before (first line empty)
+    # though it's not clear how the file got into that state. Recover and log.
+    if [ "${l[0]}" != "HOURS_IN_SERVICE" ]; then
+        NOW=`date`
+        logger "recovering invalid service counter"
+        echo "$NOW - recovering invalid service counter" >> $COUNTERLOG
+        cat $COUNTERFILE                                 >> $COUNTERLOG
+        truncate_file $COUNTERLOG 1000
+    fi
+
+    NEW_VAL=$(($CURRENT_VAL + 1))
+}
+
+if [ -f $COUNTERFILE ]; then
+    get_new_service_counter_val
+fi
+
+# write out value to _new file then move, so operations on service_counter.dat
+# are atomic (even the initial creation)
+echo "HOURS_IN_SERVICE" >  ${COUNTERFILE}_new
+echo "decimal"          >> ${COUNTERFILE}_new
+echo "1"                >> ${COUNTERFILE}_new
+echo "${NEW_VAL}"       >> ${COUNTERFILE}_new
+
+mv ${COUNTERFILE}_new $COUNTERFILE
+

@@ -1,0 +1,194 @@
+#!/bin/sh
+#
+# dhcp         run dhcp client
+#
+. /etc/init.d/functions
+
+PROG="udhcpc"
+APP=/sbin/$PROG
+RETVAL=0
+manuftest=`fw_printenv MANUFTEST 2>&1 | sed 's/MANUFTEST=//'`
+DEFAULT_MTU=1492
+DEFAULT_PMTU_DISCOVERY=0
+scriptPATH=/opt/ipaccess/Utils/scripts
+cnfPATH=/var/ipaccess
+cnf_dflt1=/opt/oem
+cnf_dflt2=/opt/ipaccess
+HWDESDEF=/var/ipaccess/factory_config/hw_description.dat
+HWDESWRK=/var/ipaccess/hw_description.dat
+BTSINITSCRIPT=/etc/init.d/nano-bts.sh
+
+iface=`cat /tmp/wanif`
+
+setup_vlan()
+{
+    local vlan_id
+
+    # Configure any WAN port VLAN. /tmp/wanif contains either eth0 or eth0.xxx
+    # where xxx is the VLAN ID, the validity of which was checked earlier
+    vlan_id=`awk -F. '{print $2}' /tmp/wanif`
+
+    if [ "$vlan_id" != "" ]
+    then
+        # Create vlan interface
+        vconfig add eth0 $vlan_id
+
+        # IP Forwarding is needed for VLANs
+        echo 1 > /proc/sys/net/ipv4/ip_forward
+    fi
+
+    # Configure any Nano-8 switch peripheral - needs to know the vlan_id, if any
+    if [ -x /opt/ipaccess/Utils/scripts/setup_nano_switch.sh ]; then
+        /opt/ipaccess/Utils/scripts/setup_nano_switch.sh $vlan_id
+    fi
+}
+
+
+init()
+{
+    # config file is missing, copy over default
+    if [ ! -f $cnfPATH/ipconfig.dat ]; then
+        # Allow OEM to provide a file in preference to IPA
+        if [ -f $cnf_dflt1/ipconfig.dat ]; then
+            cp -f $cnf_dflt1/ipconfig.dat $cnfPATH/ipconfig.dat
+        elif  [ -f $cnf_dflt2/ipconfig.dat ]; then
+            cp -f $cnf_dflt2/ipconfig.dat $cnfPATH/ipconfig.dat
+        fi
+    fi
+
+    # ensure the working hw_description.dat is present.
+    if [ ! -e $HWDESWRK ]; then
+        cp $HWDESDEF $HWDESWRK
+    fi
+
+    setup_vlan
+
+    # check if pmtu discover is enabled/disabled
+    pmtu_discovery=`$scriptPATH/getVarVal $cnfPATH/ipconfig.dat PMTU_DISCOVERY_ENABLED`
+        
+    if [ "$pmtu_discovery"+ == ""+ ]; then
+        pmtu_discovery=$DEFAULT_PMTU_DISCOVERY
+    fi 
+    
+    if [ "$pmtu_discovery" == "0" ]; then
+        # setting the physical interface mtu is not dependent on having an address
+        default_mtu=`$scriptPATH/getVarVal $cnfPATH/ipconfig.dat DEFAULT_MTU`
+        if [ "$default_mtu"+ == ""+ ]; then
+            default_mtu=$DEFAULT_MTU
+        fi
+    else
+            default_mtu=$DEFAULT_MTU
+    fi 
+    
+    ifconfig $iface mtu $default_mtu
+
+    if [ "$manuftest"+ = "TRUE+" ]
+    then
+      dhcpEnabled="0"
+    else
+      if [ -f $scriptPATH/getVarVal ] && [ -f $cnfPATH/ipconfig.dat ]
+      then
+        dhcpEnabled=`$scriptPATH/getVarVal $cnfPATH/ipconfig.dat DHCP_ENABLED`
+      else
+        dhcpEnabled="1"
+      fi
+    fi
+
+    if [ "$dhcpEnabled" == "1" ]
+    then
+      echo "Using DHCP..."
+      if [ -f $scriptPATH/getVarVal ] && [ -f $cnfPATH/hw_description.dat ]
+      then
+        clientid=`$scriptPATH/getVarVal $cnfPATH/hw_description.dat SERIAL_NUMBER`
+        hname="ip.access-3G-AP"
+      else
+        clientid=0
+        hname="ip.access-3G-AP"
+      fi
+
+      if [ -x $APP ] && [ -f /etc/udhcpc.script ]
+      then
+        echo "starting dhcp client : $hname-$clientid"
+        $APP -S -c "$hname-$clientid" -s /etc/udhcpc.script -i $iface
+      else
+        echo "Dhcp client not found no ip address assigned to AP"
+      fi
+    else
+      echo "Using static ip address"
+      defgw=`$scriptPATH/getVarVal $cnfPATH/ipconfig.dat DEFAULT_GATEWAY`
+      pridns=`$scriptPATH/getVarVal $cnfPATH/ipconfig.dat PRIMARY_DNS`
+      ipmask=`$scriptPATH/getVarVal $cnfPATH/ipconfig.dat STATIC_SUBNET_MASK`
+      # Manufacturing test s/w is nfs mounted. Bringing the interface down
+      # then up disconnects the mount.
+      if [ "$manuftest"+ = "TRUE+" ] && [ `fw_printenv ipaddr` ]
+      then
+        ipaddr=`fw_printenv ipaddr | awk -F= '{print $2}'`
+      else
+        ipaddr=`$scriptPATH/getVarVal $cnfPATH/ipconfig.dat STATIC_IP_ADDR`
+        ifconfig $iface down
+        ifconfig $iface $ipaddr netmask $ipmask
+        route add default gw $defgw $iface
+        echo "nameserver $pridns" > /tmp/static_resolv.conf
+        ln -sf /tmp/static_resolv.conf /tmp/resolv.conf
+        ifconfig $iface up
+      fi
+      echo "ipaddr:$ipaddr default gw:$defgw dns:$pridns netmask:$ipmask"
+      echo ""
+      
+      # If the Nano BTS script exists, the run it to start the BTS port
+      if [ -x $BTSINITSCRIPT ]; then
+          $BTSINITSCRIPT start
+      fi
+    fi
+}
+
+start() {
+    echo -n "Starting $PROG: "
+    is_app_running $PROG
+    if [ $? != $TRUE ]; then
+        init
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+            echo OK
+        else
+            echo FAILURE
+        fi
+    else
+        echo "FAILURE (already running)"
+    fi
+}
+
+stop() {
+    echo -n "Stopping $PROG: "
+    kill -9 `pidof -o $$ -o $PPID -o %PPID $PROG` >/dev/null 2>&1
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

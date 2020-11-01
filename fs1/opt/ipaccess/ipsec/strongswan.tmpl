@@ -1,0 +1,23 @@
+# strongswan.conf - strongSwan configuration file
+
+charon {
+    # number of worker threads in charon
+    threads = 16
+    # DSCP value to use for IKE and NAT keep-alive packets
+    ike_dscp = %!IKE_DSCP!%
+    # size of the replay attack window
+    anti_replay_window = %!ANTI_REPLAY_WINDOW!%
+    # interval between NAT keep alive packets
+    keep_alive = %!KEEP_ALIVE!%
+
+    # define two loggers using syslog
+    syslog {
+        # default level to the LOG_DAEMON facility
+        daemon {
+        }
+        # authpriv logs are disabled
+        auth {
+            default = -1
+        }
+    }
+}

@@ -1,0 +1,295 @@
+#!/bin/sh
+
+####################################################################################
+# This script starts stops resets and restarts all applications
+# Reset uses the default configuration if it does not exists for a application
+####################################################################################
+
+RMM="/var/ipaccess/cisco/`awk '/^Version:/{print \"rmm-\" $2}' /opt/cisco/control`"
+[ -x ${RMM} ] && exec ${RMM} $*
+
+. /etc/init.d/functions
+
+#PROG_CMHS="cmhs"
+PROG_DSLMSSP="DslmSsp"
+PROG_DSLGSYSREG="Dslg_SysRegistry"
+PROG_GPSTEST="gpstest"
+WDIR=/opt/cisco
+RETVAL=0
+
+initDslmSsp()
+{
+    PDIR=`pwd`
+
+    cd $WDIR
+
+    ./$PROG_DSLMSSP
+    ./rmmwd
+
+    cd $PDIR
+}
+
+initDslgSysReg()
+{
+    PDIR=`pwd`
+
+    cd $WDIR
+
+    ./$PROG_DSLGSYSREG
+
+    cd $PDIR
+}
+
+startDslmSsp() {
+    echo -n "Starting $PROG_DSLMSSP: "
+    is_app_running $PROG_DSLMSSP
+    if [ $? != $TRUE ]; then
+        initDslmSsp
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+            echo OK
+        else
+            echo FAILURE
+        fi
+    else
+        echo "FAILURE (already running)"
+    fi
+}
+
+stopDslmSsp() {
+    echo -n "Stopping (SIGTERM) $PROG_DSLMSSP: "
+    kill -9 `pidof $PROG_DSLMSSP`
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+    # hang about for a bit to allow DslmSsp to die gracefully
+    sleep 1
+}
+
+startDslgSysReg() {
+    echo -n "Starting $PROG_DSLGSYSREG: "
+    is_app_running $PROG_DSLGSYSREG
+    if [ $? != $TRUE ]; then
+        initDslgSysReg
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+            echo OK
+        else
+            echo FAILURE
+        fi
+    else
+        echo "FAILURE (already running)"
+    fi
+}
+
+stopDslgSysReg() {
+    echo -n "Stopping (SIGTERM) $PROG_DSLGSYSREG: "
+    kill -9 `pidof $PROG_DSLGSYSREG`
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+    # hang about for a bit to allow Dslg_SysRegistry to die gracefully
+    sleep 1
+}
+
+start()
+{
+  echo -n "Starting $PROG_GPSTEST: "                                  
+  is_app_running $PROG_GPSTEST                                        
+  if [ $? != $TRUE ]; then                                            
+      /opt/cisco/gpstest 4 5 &                                        
+      RETVAL=$?                                                       
+      if [ $RETVAL -eq 0 ]; then                                      
+           echo OK                                                    
+      else                                                            
+           echo FAILURE                                               
+      fi                                                              
+  else                                                                
+      echo "FAILURE (already running)"                                
+  fi       
+
+#  Removed in SR 5.2 since it is not required any more
+#  . /var/ipaccess/opmode.sh
+#  if [ $OP_MODE != OP_NORMAL ]; then
+#      echo "OP_MODE not set to OP_NORMAL. RMM module will not start up"	
+#      exit 1; 
+#  fi  
+
+   if [ -f /var/ipaccess/cisco/PartialFactoryRestore ]; then
+         echo "PartialFactoryResore found. Remove only dslg configs"
+
+         rm -f /var/ipaccess/cisco/dslg_cur_cfg.xml.gz
+         rm -f /var/ipaccess/cisco/dslg_def_cfg.xml.gz
+         rm -f /var/ipaccess/cisco/dslg_bak_cfg.xml.gz
+
+         rm -f /var/ipaccess/cisco/PartialFactoryRestore
+   else
+         echo "PartialFactoryResore not found. Remove only tr069 configs for normal reboot cases"
+
+         rm -f /var/ipaccess/cisco/tr069_cur_cfg.xml.gz
+         rm -f /var/ipaccess/cisco/tr069_def_cfg.xml.gz
+         rm -f /var/ipaccess/cisco/tr069_bak_cfg.xml.gz
+   fi
+
+   #copy the current and backup config files if they exist
+   if [ -f /var/ipaccess/cisco/dslg_bak_cfg.xml.gz ]; then
+        echo "copy backup config"
+        cp /var/ipaccess/cisco/dslg_bak_cfg.xml.gz /var/ipaccess/cisco/dslg_bak_cfg_debug.xml.gz
+   fi
+
+   if [ -f /var/ipaccess/cisco/dslg_cur_cfg.xml.gz ]; then
+        echo "copy currrent config"
+        cp /var/ipaccess/cisco/dslg_cur_cfg.xml.gz /var/ipaccess/cisco/dslg_cur_cfg_debug.xml.gz
+   fi
+
+
+  #setup default configuration if does not exists in /var/ipaccess
+  if [ ! -d /var/ipaccess/cisco ]; then
+    mkdir -p /var/ipaccess/cisco
+  fi
+#  if [ ! -f /var/ipaccess/cisco/dslg_def_cfg.xml.gz ]; then
+    cp -f /opt/cisco/dslg_def_cfg.xml.gz /var/ipaccess/cisco/dslg_def_cfg.xml.gz
+#  fi
+
+  cp -f /opt/cisco/tr069_def_cfg.xml.gz /var/ipaccess/cisco/tr069_def_cfg.xml.gz
+
+  if [ -f /var/ipaccess/tempShutdown ]; then                                                                                        
+      rm -f /var/ipaccess/cisco/dslg_cur_cfg.xml.gz /var/ipaccess/cisco/dslg_bak_cfg.xml.gz                                           
+      rm -f /var/ipaccess/tempShutdown 
+  fi 
+
+#  if [ ! -f /var/ipaccess/cisco/dslg_bak_cfg.xml.gz ]; then                                                    
+#     if [ ! -f /var/ipaccess/cisco/dslg_cur_cfg.xml.gz ]; then                                                 
+#         echo "Only dslg_def_cfg.xml.gz is there"                                                        
+#     else                                                                                                      
+#        cp /var/ipaccess/cisco/dslg_cur_cfg.xml.gz /var/ipaccess/cisco/dslg_bak_cfg.xml.gz                     
+#     fi                                                                                                        
+#  fi                                                                                                           
+#
+#  if [ -f /var/ipaccess/cisco/dslg_bak_cfg.xml.gz ]; then                                    
+#      gunzip /var/ipaccess/cisco/dslg_bak_cfg.xml.gz                                         
+#      grep "Device.DeviceInfo.X_00000C_SwModuleVersions" /var/ipaccess/cisco/dslg_bak_cfg.xml
+#      if [ $? == 0 ]; then                                                                   
+#          var=`awk '/Version: /{ print $2}' /usr/lib/ipkg/info/rmm.control`                                    
+#          echo " VAR:$var"                                                                                     
+#          var1=`awk '/RMM: /{gsub(/.*RMM: /,""); gsub(/,/,""); print $1}' /var/ipaccess/cisco/dslg_bak_cfg.xml`
+#          echo "VAR1:$var1"                                                                                    
+#          if [ $var != $var1 ]; then                                                                           
+#              echo "Versions are diff"                                                                         
+#              gunzip /var/ipaccess/cisco/dslg_cur_cfg.xml.gz                                         
+#              diff -q /var/ipaccess/cisco/dslg_cur_cfg.xml /var/ipaccess/cisco/dslg_bak_cfg.xml
+#              if [ $? == 0 ]; then
+#                   gzip /var/ipaccess/cisco/dslg_cur_cfg.xml
+#                   gzip /var/ipaccess/cisco/dslg_bak_cfg.xml
+#                   echo "Current and backup file are in sync"
+#              else
+#                   echo "Current and backup file should be made in sync"
+#                   gzip /var/ipaccess/cisco/dslg_cur_cfg.xml
+#                   gzip /var/ipaccess/cisco/dslg_bak_cfg.xml
+#                   /opt/cisco/Dslg_SysRegistry
+#                   sleep 3
+#                   stopDslgSysReg
+#                   cp -f /var/ipaccess/cisco/dslg_cur_cfg.xml.gz /var/ipaccess/cisco/dslg_bak_cfg.xml.gz
+#              fi    
+#              /opt/cisco/DslmCurConfigUpdate                                                                          
+#              if [ $? == 0 ]; then                                                                             
+#                  rm -f /var/ipaccess/cisco/dslg_cur_cfg.xml.gz                                                
+#              else                                                                                             
+#                 echo "COMBINEFILE crashed"                                                                    
+#              fi                                                                                               
+#          else                                                                                                 
+#              echo "Version are same"                                                                          
+#          fi                                                                                                   
+#      else                                                                                                     
+#         echo "Device.DeviceInfo.X_00000C_SwModuleVersions is not present"                                     
+#      fi                                                                                                       
+#      gzip /var/ipaccess/cisco/dslg_bak_cfg.xml                                                                
+#      gzip /var/ipaccess/cisco/dslg_def_cfg.xml                                                                
+#  fi
+#           
+	## if the version of RMM is 4.2.0 or greater, change the AcsUrl port from 7547 to 443
+    ##commenting the code below as by default all the AP's in field are 4.2 and up,
+    ##this code is no longer needed
+    
+#	v=`awk '/Version/{gsub(/bc.*/,""); print $2}' /usr/lib/ipkg/info/rmm.control | awk -F . '{printf("%03d%03d%03d",$1,$2,$3)}'`
+#	c=004002000
+#
+#	if [ $v -ge $c ];
+#	then
+#		echo "$c is greater than or equal to $v"
+#		echo changes may be necessary
+#
+#		org=/tmp/$$.org
+#		new=/tmp/$$.new
+#
+#		for i in /var/ipaccess/cisco/dslg_*_cfg.xml.gz;
+#		do
+#			gunzip -d < $i > $org
+#			awk '/AcsUrl/{gsub(/7547/,443); print} !/AcsUrl/' $org > $new
+#			sumorg=`md5sum $org | awk '{print $1}'`
+#			sumnew=`md5sum $new | awk '{print $1}'`
+#			if [ "$sumorg" != "$sumnew" ];
+#			then
+#				echo $i was changed
+#				gzip -c $new > $i
+#			else
+#				echo $i unchanged
+#			fi
+#		done
+#		rm -f $org $new
+#	else
+#		echo changes not necessary
+#	fi
+
+	# done!
+  
+  startDslgSysReg
+
+  # wait for Dslg_SysRegistry to start properly and then start DslmSsp
+  sleep 3
+  
+  startDslmSsp
+  
+}
+
+stop()
+{
+  #Stopping both applications
+  
+  kill -9 `pidof rmmwd`
+  kill -9 `pidof gpstest`
+  kill -9 `pidof gps_pollSWVersion`
+  stopDslmSsp
+  stopDslgSysReg
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL
+

@@ -1,0 +1,10 @@
+Package: dtcs
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 37.0
+Description: TCL scripts required for DTCS on the target
+Depends: tcl8.4
+Source: MKS: e:/sie/3gap/src/cpe/picoChipRef/PC8208/ipkg/dtcs

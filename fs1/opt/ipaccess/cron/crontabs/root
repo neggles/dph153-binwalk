@@ -1,0 +1,3 @@
+0 * * * * /opt/ipaccess/Utils/scripts/servicecounter
+1 0 * * * /opt/ipaccess/Utils/scripts/ntplogger
+0 */3 * * * /opt/ipaccess/Utils/scripts/cdrlogcopy periodic

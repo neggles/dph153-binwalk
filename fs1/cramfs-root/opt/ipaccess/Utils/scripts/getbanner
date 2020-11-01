@@ -1,0 +1,65 @@
+#!/bin/bash
+#
+# script to generate banners for display over serial/ssh
+#
+GVV=/opt/ipaccess/Utils/scripts/getVarVal
+SWDESC=/etc/sw_description.dat
+HWDESC=/var/ipaccess/hw_description.dat
+IPCONFIG=/var/ipaccess/ipconfig.dat
+
+if [ ! -x $GVV ]; then
+    echo "ERROR: $GVV not executable"
+    exit 1
+fi
+
+FSRELEASE=`$GVV $SWDESC MAINFS_RELEASE`
+FSVARIANT=`$GVV $SWDESC FS_VARIANT`
+SN=`$GVV $HWDESC SERIAL_NUMBER`
+PN=`$GVV $HWDESC PCB_ASSEMBLY_PART_NUM`
+
+get_ip()
+{
+    CURRENT_IP=`ifconfig eth0 | awk '/inet addr:/ {print $2}' | awk -F: '{print $2}'`
+
+    if [ "$CURRENT_IP" = "" ]; then
+        CURRENT_IP="None"
+    fi
+
+    DHCP_ENABLED=$($GVV $IPCONFIG DHCP_ENABLED)
+
+    echo -n "$CURRENT_IP"
+
+    if [ "$COMMISSIONING_MODE" = "1" ]; then
+        echo " (commissioning)"
+     elif [ "$DHCP_ENABLED" != "0" ]; then
+        echo " (DHCP)"
+    else
+        echo " (static)"
+    fi
+}
+
+get_ssh()
+{
+    echo "PN: $PN SN: $SN Var: $FSVARIANT Rel: $FSRELEASE"
+}
+
+get_serial()
+{
+    echo "PN: $PN SN: $SN Var: $FSVARIANT Rel: $FSRELEASE"
+    echo -n "IP: "
+    get_ip
+}
+
+# processing of command line
+case "$1" in
+    serial)
+        get_serial
+        ;;
+    ssh)
+        get_ssh
+        ;;
+    *)
+        echo "Usage: $0 {serial|ssh}"
+        exit 1
+esac
+

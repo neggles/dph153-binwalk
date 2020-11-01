@@ -1,0 +1,122 @@
+#!/bin/bash
+#
+# cdrlogcopy - script to copy logs from /tmp to flash.
+#          it first deletes the oldest file and renames all the old
+#          files to make space for new file. By default, it copies
+#          cdr log files but command line options may specify other files
+
+CDR_FLASH_PATH="/var/ipaccess/logs/cdr"
+CDR_TMP_PATH="/tmp/cdr"
+CDR_FILENAME="cdrlog"
+HO_FLASH_PATH="/var/ipaccess/logs/ho"
+HO_TMP_PATH="/tmp/ho"
+HO_FILENAME="holog"
+FLASH_PATH=$CDR_FLASH_PATH
+TMP_PATH=$CDR_TMP_PATH
+FILENAME=$CDR_FILENAME
+NUM_HIST_FILE=3
+OPERATION="rotate"
+
+ME=`basename $0`
+
+usage()
+{
+    echo "USAGE: $ME [-h] [-p=PATH] [-t=PATH] [-f=FILENAME] [-n=NUM] [periodic]"
+    echo " -h                     show this help text"
+    echo " -p                     Path on the flash where to copy the files"
+    echo " -t                     Path on the /tmp from where to copy the files"
+    echo " -f                     Name of the log file to rotate/copy"
+    echo " -n                     Number of history files to maintain on flash"
+    echo " periodic               To specify periodic copy to flash"
+    echo "                        all files, irrespective of value of other options"
+}
+
+log_rotate()
+{
+    #Remove oldest file. Rename .3->.4, .2->.3 as so on
+    HIST_FILE_COUNT=$(($NUM_HIST_FILE-1))
+
+    rm -f $FLASH_PATH/$FILENAME.$HIST_FILE_COUNT 2>/dev/null
+
+    OLD_FILENUM=0
+    while [ $HIST_FILE_COUNT -gt 0 ]; do
+        OLD_FILENUM=$(($HIST_FILE_COUNT-1))
+        mv $FLASH_PATH/$FILENAME.$OLD_FILENUM $FLASH_PATH/$FILENAME.$HIST_FILE_COUNT 2>/dev/null
+        HIST_FILE_COUNT=$(($HIST_FILE_COUNT-1))
+    done
+
+    mv $TMP_PATH/$FILENAME.0 $FLASH_PATH 2>/dev/null
+
+    #Remove any active file copied periodically
+    if [ -f "$FLASH_PATH/$FILENAME" ]; then
+        rm -f $FLASH_PATH/$FILENAME
+    fi
+
+    #Remove .backup file if exists
+    if [ -f "$FLASH_PATH/$FILENAME.backup" ]; then
+        rm -f $FLASH_PATH/$FILENAME.backup
+    fi
+}
+
+periodic_copy()
+{
+    FLASHPATH=$1
+    TEMPPATH=$2
+    FILE=$3
+
+    if [ ! -f $FLASHPATH/$FILE ]; then
+        cp -f $TEMPPATH/$FILE $FLASHPATH
+    else
+        OLDFILE_NUM_CHAR=`wc -c $FLASHPATH/$FILE | awk '{ print $1 }'`
+        NEWFILE_NUM_CHAR=`wc -c $TEMPPATH/$FILE | awk '{ print $1 }'`
+    
+        if [ $OLDFILE_NUM_CHAR -lt $NEWFILE_NUM_CHAR ]; then
+            #Make a temporary copy of the file
+            cp -f $TEMPPATH/$FILE $TEMPPATH/$FILE.tmp
+            NEWFILE_NUM_CHAR=`wc -c $TEMPPATH/$FILE.tmp | awk '{ print $1 }'`
+            NUM_NEW_CHARS=$(($NEWFILE_NUM_CHAR-$OLDFILE_NUM_CHAR))
+            #Copy new added data only
+            tail -c $NUM_NEW_CHARS $TEMPPATH/$FILE.tmp >> $FLASHPATH/$FILE
+            rm -f $TEMPPATH/$FILE.tmp
+        fi
+    fi
+
+    #Remove .backup file if exists
+    if [ -f "$FLASHPATH/$FILE.backup" ]; then
+        rm -f $FLASHPATH/$FILE.backup
+    fi
+}
+
+# process command line arguments
+for p in $*
+do
+    case $p in
+        -p=*)
+        FLASH_PATH=`echo $p | sed 's/[-a-zA-Z0-9]*=//'`
+        ;;
+        -t=*)
+        TMP_PATH=`echo $p | sed 's/[-a-zA-Z0-9]*=//'`
+        ;;
+        -f=*)
+        FILENAME=`echo $p | sed 's/[-a-zA-Z0-9]*=//'`
+        ;;
+        -n=*)
+        NUM_HIST_FILE=`echo $p | sed 's/[-a-zA-Z0-9]*=//'`
+        ;;
+        periodic)
+        OPERATION="periodic"
+        ;;
+        *|-h)
+        usage
+        exit 1
+        ;;
+    esac
+done
+
+if [ "$OPERATION" == "rotate" ]; then
+    log_rotate
+else
+#Copy all log files from /tmp to flash
+    periodic_copy $CDR_FLASH_PATH $CDR_TMP_PATH $CDR_FILENAME
+    periodic_copy $HO_FLASH_PATH $HO_TMP_PATH $HO_FILENAME
+fi

@@ -1,0 +1,9 @@
+Package: arm-devdrv-pc302
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version:563.21.2
+Source: MKS e:/sie/3gap/src/cpe/target/platform/PC202/arm
+Description: User Space Apps that are part of BSP (i.e. linked with picoLib)

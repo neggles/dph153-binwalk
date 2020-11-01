@@ -1,0 +1,6 @@
+/etc/init.d/basicoamcommon
+/etc/init.d/basicoamsetup
+/opt/ipaccess/basic_oam.dat
+/etc/rcS.d/S80basicoamsetup
+/etc/rcS.d/S86basicoam
+/etc/init.d/basicoamwrapper

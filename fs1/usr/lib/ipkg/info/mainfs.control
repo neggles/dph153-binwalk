@@ -1,0 +1,10 @@
+Package: mainfs
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 563.21.2
+Source: MKS basefs
+Description: base file system
+Depends: basefs

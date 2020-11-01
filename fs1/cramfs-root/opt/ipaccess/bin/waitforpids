@@ -1,0 +1,373 @@
+#!/bin/bash
+### waitforpids
+### This script waits for multiple PID's and detects if any of them halt unexpectedly
+### It polls all PID's once per second to check that they are still alive
+
+#set -v -o xtrace
+if [ -f /var/ipaccess/nv_env.sh ]; then
+    source /var/ipaccess/nv_env.sh
+fi
+source /etc/init.d/functions
+source /etc/profile
+
+REASON=restart
+CRASHED_APP=
+IPKG=/usr/local/bin/ipkg
+LOG_MANAGER="/opt/ipaccess/bin/managelogs"
+LOG_MANAGER_CONFIG="/var/ipaccess/config/managelogs.cfg"
+LOG_MANAGER_CONFIG_DEFAULT="/opt/ipaccess/managelogs_default.cfg"
+LOG_MANAGER_PERIOD=300
+
+TMP_CORE_FILES_PATH="/tmp/cores/applications"
+FLASH_CORE_FILES_PATH="/var/ipaccess/cores/applications"
+
+COREFILE=$(/opt/ipaccess/Utils/scripts/getVarVal /var/ipaccess/config/baseband_mgr.cfg PICO_CORE_FILE)
+
+AUTO_REBOOT_ON_CRASH_TIME=300
+
+# Reserve 1500k for Core files
+FLASH_RESERVED_FOR_CORES=1500
+POLL_PERIOD=5
+REBOOT_CMD="reboot"
+
+#####################################################################################
+# Helper function: usage
+#####################################################################################
+usage()
+{
+  echo "$0 - usage"
+  echo "$0 <pid1> <pid2> <pid3>..."
+  echo "Polls at $POLL_PERIOD second intervals until one of the pids specified stops responding."
+  echo "Logs the event and then reboots the board."
+}
+
+#####################################################################################
+# Helper function: log_ipackage_versions
+#  log a minimum of ipackage version information as many of the packages have the 
+#  same versions and writing information to flash is slow. This is particularly 
+#  important at startup where system load can timeout applications establishing
+#  communications with one another.
+#####################################################################################
+log_ipackage_versions()
+{
+    line="System started up. SW Versions running: "
+    for i in uboot modules mainfs rmm
+    do
+        name=`$IPKG info ${i}* | grep Package | awk -F: '{ print $2 }'`
+        ver=`$IPKG info ${i}* | grep "Version: " | awk -F: '{ print $2 }'`
+        if [ $name ]; then
+            line="$line$name ($ver )"
+        fi
+    done
+    echo $line >> $LOG_FILE_PATH/$LOG_FILE
+}
+
+#####################################################################################
+# Helper function: reboot_board
+#####################################################################################
+reboot_board()
+{
+  if [ "$ENV_AUTOREBOOT_ON_CRASH" == "" -o "$ENV_AUTOREBOOT_ON_CRASH" != "0" ]
+  then
+    # permit user time to login & disable auto_reboot_on_crash
+    UPTIME=0
+    echo -n "Waiting for user to login and fix the problem..."
+    while [ $UPTIME -lt $AUTO_REBOOT_ON_CRASH_TIME ]
+    do
+      sleep 5
+      # extract second parameter and round down to integer value
+      UPTIME=`cat /proc/uptime | awk '{ print $1}' | awk 'BEGIN { FS="." } { print $1}'`
+      echo -n "."
+    done
+    
+    log_entry "Rebooting now..."
+    if [ "$REASON" = "lowmem" ]; then
+        /opt/ipaccess/Utils/scripts/set_reboot_cause SW_FAULT_HIGH_MEM
+    else
+        /opt/ipaccess/Utils/scripts/set_reboot_cause SW_FAULT_APP_FAILURE "$CRASHED_APP stopped running"
+    fi
+    $REBOOT_CMD
+  else
+    log_entry "Auto-rebooting disabled. Sitting waiting for manual restart"
+  fi
+}
+
+#####################################################################################
+# Helper function: log_pids_start
+#####################################################################################
+log_pids_start()
+{
+  if [ ! -e /proc/$1/cmdline ]; then
+    log_swalarm "PID $1 - Crashed before monitoring began"
+    CONT=0
+  else
+    CMD=`cat /proc/$1/cmdline`
+    log_entry "Waiting for $1 - $CMD"
+    CMD_LIST[$1]=$CMD
+  fi
+}
+
+purge_old_files()
+{
+  SIZE=`du -s $1 | awk '{ print $1 }'`
+
+  if [ $SIZE -gt $FLASH_RESERVED_FOR_CORES ]; then
+    # make 100k space so we don't need to purge every boot
+    while [ $SIZE -gt $(($FLASH_RESERVED_FOR_CORES - 100)) ]
+    do
+      echo -n "Purging $1: Current Size= $SIZE..."
+      FILE=`ls -t $1 | awk '{ print $1 }' | tail -n 1`
+      echo "purging $1/$FILE"
+      rm -f $1/$FILE
+      SIZE=`du -s $1 | awk '{ print $1 }'`
+    done
+  fi
+}
+#####################################################################################
+# Helper function: copy_core
+#####################################################################################
+copy_core()
+{
+  if [ ! -e $FLASH_CORE_FILES_PATH ]
+  then
+    mkdir -p $FLASH_CORE_FILES_PATH
+  fi
+
+  purge_old_files $FLASH_CORE_FILES_PATH
+
+  cd $CRASH_LOG_PATH
+  # Look for crash log files first. Crash log files will always be created before the
+  # application dies, so no need to wait if its not there.
+  # Note, CRASH_LOG_PATH is in the environment, set in startmode as its used by the
+  # crash handler code as well.
+  CRASH_LOGS=`ls crash_*_$1.txt 2> /dev/null`
+  if [ "$CRASH_LOGS" != "" ]
+  then
+    for c in "$CRASH_LOGS"
+    do
+      if [ -s "$c" ]; then
+        mv $c $FLASH_CORE_FILES_PATH/$c
+        log_swalarm "PID $1 - $CRASHED_APP - Crash log moved to $FLASH_CORE_FILES_PATH/$c"
+      else
+        # empty crash file
+        log_swalarm "PID $1 - $CRASHED_APP - Crash log was empty"
+        rm -f $c
+      fi
+    done
+  fi
+  
+  cd $TMP_CORE_FILES_PATH
+  # Now look for core files
+  for i in 1 2 3 4 5
+  do
+     CORES=`ls core_$1_* 2> /dev/null`
+     if [ "$CORES" != "" ]
+     then
+       for c in "$CORES"
+       do
+         mv $c $FLASH_CORE_FILES_PATH/$c
+         log_swalarm "PID $1 - $CRASHED_APP - Core dump moved to $FLASH_CORE_FILES_PATH/$c"
+       done
+       break
+     else
+       log_entry "$1 has crashed ... waiting for core file to exist...$i"
+       sleep 1
+     fi
+  done
+
+}
+
+#####################################################################################
+# Helper function: ledOff
+#####################################################################################
+ledOff()
+{
+    echo 0 > /dev/leddriver
+}
+
+#####################################################################################
+# Helper function: rfOff
+#####################################################################################
+rfOff()
+{
+    sdgpio_util -txifmodulation 0
+    sdgpio_util -txpoweramp 0
+}
+
+#####################################################################################
+# Helper function: log_crash                                                         
+#####################################################################################
+log_crash()                                
+{                                                                                    
+    CRASHED_APP=${CMD_LIST[$1]}                                                      
+    log_entry "PID $1 - $CRASHED_APP $2."                                            
+    log_swalarm "PID $1 - $CRASHED_APP $2."                                          
+    CONT=0;                                                                          
+                                                                                     
+    copy_core $1                                                                     
+}                                                                                    
+                                                                                     
+#####################################################################################      
+# Helper function: pollpid                                                           
+#####################################################################################
+pollpid()                                                     
+{                                                                        
+  if [ -e /proc/$1 ]                                                                                  
+  then                                              
+      if [ -e /proc/$1/stat ]                                                        
+      then                                        
+          read pid app state rest < /proc/$1/stat                                    
+          if [ "Z" = "$state" ]                                                         
+          then                                                                       
+              log_crash $1 "is in Zombie state"   
+          fi                                                                         
+      else                                                                           
+          log_crash $1 "does not have a stat file"                                   
+      fi                                                                             
+  else                                                                               
+      log_crash $1 "is no longer running"                                                               
+  fi                                                                                 
+}                                                                                    
+
+#####################################################################################
+# Helper function: pollpico_running
+# SH6: core dump created by Baseband Manager in MgrApp
+#####################################################################################
+pollpico_running()
+{
+  if [ "$COREFILE" != "" ] && [ -f $COREFILE ]
+  then
+    CONT=0;
+    CRASHED_APP=picoArray
+    log_swalarm "Picoarray has crashed... "
+  fi
+}
+
+#####################################################################################
+# Helper function: abort_and_upload
+#####################################################################################
+abort_and_upload()
+{
+  # don't abort if error occurs in following section so that we will continue
+  # to upload and reboot
+  set +e 
+
+  # exit from normal mode to ensure RF led is turned off - do this
+  # before attempting upload because that may take some time.
+  if [ "$OP_MODE" == "OP_NORMAL" ]; then
+    /etc/init.d/opnormal appstop
+  fi
+  
+  # in case MgrApp crashed; turn off the led and rf
+  ledOff
+  rfOff
+
+  # stop tcpdump if it is running, so that the tcpdump.pcap files are uploaded
+  /etc/init.d/tcpdump stop
+  
+  # generate and upload diag info
+  diagupload --reason=${REASON} &
+  # allow up to 600 seconds to generate and upload the diag file
+  DU_TIMEOUT=600
+  DU_TAKEN=0
+  while [ "`pidof diagupload`" != "" -a $DU_TAKEN -lt $DU_TIMEOUT ]; do
+    sleep 1
+    let "DU_TAKEN += 1"
+  done
+  if [ $DU_TAKEN -ge $DU_TIMEOUT ]; then
+    log_swalarm "Timeout while uploading diag file"
+  fi
+
+  # and reboot if configured to do so
+  reboot_board
+
+}
+#####################################################################################
+# Helper function: main
+#####################################################################################
+main()
+{
+  # Set polling flag = TRUE
+  CONT=1;
+
+  # ensure pico core dump file is not present
+  rm -f $COREFILE
+
+  log_ipackage_versions
+
+  # Log the PID's we're monitoring and capture the CMD line for each
+  for i in $*
+  do
+    log_pids_start $i
+  done
+
+  # Do a log file check the first time through the loop
+  LOG_MANAGER_COUNT=$LOG_MANAGER_PERIOD
+
+  # Main polling loop
+  while [ $CONT -eq 1 ]
+  do
+    sleep $POLL_PERIOD
+    for i in $*
+    do
+      pollpid $i
+    done
+    pollpico_running
+    
+    if [ -f /tmp/procmon/alert ]; then
+        REASON="lowmem"
+        CONT=0
+    fi
+
+    # Rotate log files if they are getting too big
+    # Only check once every LOG_MANAGER_PERIOD times round the polling loop
+    # LOG_MANAGER_COUNT counts in seconds
+    if [ "$LOG_MANAGER_COUNT" -ge "$LOG_MANAGER_PERIOD" ]
+    then
+      LOG_MANAGER_COUNT=0
+
+      # Check for configuration file. If it doesn't exist, copy over default
+      if [ ! -f $LOG_MANAGER_CONFIG ]
+      then
+        cp -f $LOG_MANAGER_CONFIG_DEFAULT $LOG_MANAGER_CONFIG
+      fi
+      
+      $LOG_MANAGER $LOG_MANAGER_CONFIG
+    else
+      let "LOG_MANAGER_COUNT += $POLL_PERIOD"
+    fi
+
+  done
+
+  abort_and_upload
+}
+
+### Check number of args
+if [ $# -lt 1 ]
+then
+  usage
+  exit
+fi
+
+if [ $# -eq 1 -a x$1 = "xinit" ]
+then
+  # Enable small coredumps (to get a small stack trace)
+  # The core_%s_%e generates a file containing signal number and program name,
+  # e.g. core_11_procmon
+  # Multiple cores from the same app are not saved because repeated crashes
+  # fill up the partition.
+  mkdir -p $TMP_CORE_FILES_PATH
+  sysctl -w "kernel.core_pattern=$TMP_CORE_FILES_PATH/core_%s_%e"
+  exit
+fi
+
+if [ $# -eq 1 -a x$1 = "xabort" ]
+then
+  # Problems detected by opnormal, so abort and do a diagnostic upload
+  abort_and_upload
+  exit
+fi
+
+###
+# Call main!
+main $*

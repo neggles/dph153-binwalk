@@ -1,0 +1,9 @@
+Package: libbz2
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 1.0.6
+Description: libbz2 required for archiving etc
+Source: MKS: e:/sie/3gap/src/applications/thirdpary/bzip2

@@ -1,0 +1,305 @@
+#! /bin/sh
+  # \
+exec tclsh "$0" "$@"
+
+########################################################################################
+#
+#    File: berBlerReport
+#
+set ::version "0.4"
+#
+#---------------------------------------------------------------------------------------
+#
+# Script file to get and calculate the running BER and BLER receiption errors.  Use this
+# script to get the lates error counts and to reset the running total.
+#
+########################################################################################
+
+#---------------------------------------------------------------------------------------
+#
+#   Constant and Configuration Data
+#
+# Filename to store the base values of the on going calculations
+set ::dataFilename "/tmp/berbler_initvalues"
+
+#---------------------------------------------------------------------------------------
+#
+#    uhex2dec32
+#
+# Convert a string of hex digits into an unsigned integer;
+#
+proc uhex2dec32 {hexvalue} {
+   regsub -all {[^0-9a-f\.\-]} $hexvalue {} newtemp
+   set hexvalue [string trim $newtemp]
+   set hexvalue [string range $hexvalue [expr [string length $hexvalue]- 8] \
+                                        [expr [string length $hexvalue] - 1]]
+   return  [format "%#u" [expr "0x$hexvalue"]] } 
+
+
+#----------------------------------------------------------------------------------------------
+#
+#    getBerBlerCounts
+#
+# Returns the current BER and BLER counts.  The data is returned as a list of 4 values.
+# List contains {BitCount, BitErrors, BlockCount, BlockErrors}
+#
+proc getBerBlerCounts {} {
+    # BER
+    set berLength -1
+    set berFunction -1
+    set retryCount 0
+    while {(($berLength !=7) || ($berFunction!="00")) && $retryCount < 10} {
+        if {[catch {set ber [exec "tclsh" "./berReport.tcl" $::host]} err]} then {
+            puts "Cannot run BER data gathering task: $err"
+            exit
+        }
+
+        if {$ber == "<no data>"} then {
+            if {$::verbose != 0} then {
+                puts "No input signal (BER)"
+            }
+
+            #return {-1 -1 -1 -1}
+        } else {
+            set berLength [llength $ber]
+            set tmp [lindex $ber 4]	
+            set berFunction [string range $tmp  6 7]
+        }
+        incr retryCount
+    }
+		if {$retryCount >= 10} then {
+		    puts "Could not get sensible data from board - try resetting it! - BER output:"
+		    puts $ber
+		    exit
+		}
+
+    set nbBits [lindex $ber [expr $berLength -2]]
+    set nbErrors [lindex $ber [expr $berLength -1]]
+    set nbBitsDec [uhex2dec32 $nbBits]
+    set nbErrorsDec [uhex2dec32 $nbErrors]
+  
+    # BLER
+    set blerLength -1
+    set blerFunction -1
+    set retryCount 0
+    while {(($blerLength !=7) || ($blerFunction!="01")) && $retryCount < 10} {
+        if {[catch {set bler [exec "tclsh" "./blerReport.tcl" $::host]} err]} then {
+            puts "Cannot run BLER data gathering task: $err"
+            exit
+        }
+
+        if {$bler == "<no data>"} then {
+            if {$::verbose != 0} then {
+                puts "No input signal (BLER)"
+            }
+
+            #return {-1 -1 -1 -1}
+        } else {
+            set blerLength [llength $bler]
+            set tmp [lindex $bler 4]
+            set blerFunction [string range $tmp  6 7]
+        }
+        incr retryCount
+    }
+		if {$retryCount >= 10} then {
+		    puts "Could not get sensible data from board - try resetting it! BLER output:"
+		    puts $bler
+		    exit
+		}
+
+    set nbBlocks [lindex $bler [expr $blerLength -2]]
+    set nbBlocksErrors [lindex $bler [expr $blerLength -1]]
+    set nbBlocksDec [uhex2dec32 $nbBlocks]
+    set nbBlocksErrorsDec [uhex2dec32 $nbBlocksErrors]
+ 
+    return [format "%s %s %s %s" $nbBitsDec $nbErrorsDec $nbBlocksDec $nbBlocksErrorsDec]
+}
+
+#---------------------------------------------------------------------------------------------------------
+#
+#     processOneReading
+#
+# Function to make a single reading from the hardware and to process that data.  How the data is
+# processed depends on the action requested.  If reset, then the reading is treaded as the base data
+# and saved for future use.  If update, then the base values are subtracted and the BER, BLER values
+# calculated.
+#
+proc processOneReading {count} {
+    # Gather one set of data
+    set berBlerData [getBerBlerCounts]
+
+    # If using CSV output then put a header as the first line
+    if {$::csv > 0  && $count == 1 && $::titles > 0} then {
+        puts "Reading,Bit Count,Bit Errors,BER,Block Count,Block Errors,BLER"
+    } elseif {$::html > 0  && $count == 1 && $::titles > 0} then {
+        puts "<tr bgcolor=\"#88CC88\"><th align=\"center\">Reading</th><th align=\"center\">Bit Count</th><th align=\"center\">Bit Errors</th><th align=\"center\">BER</th><th align=\"center\">Block Count</th><th align=\"center\">Block Errors</th><th align=\"center\">BLER</th></tr>"
+    }
+
+    if {$::action == "reset"} then {
+        # Use these values as the base values for future values
+        if {[catch {set dataFile [open $::dataFilename "w"]} err]} then {
+            puts "Cannot create the data storage file: $err"
+            exit
+        }
+
+        # These are the base values, transfer to working variables
+        set baseBitCount   [lindex $berBlerData 0]
+        set baseBitErr     [lindex $berBlerData 1]
+        set baseBlockCount [lindex $berBlerData 2]
+        set baseBlockErr   [lindex $berBlerData 3]
+
+        puts $dataFile [format "%u %u %u %u" $baseBitCount $baseBitErr \
+                                             $baseBlockCount $baseBlockErr]
+        close $dataFile
+
+        if {$::verbose > 0} then {
+            puts "Data file $::dataFilename created"
+        }
+    } else {
+        # Read the base values back from the file
+        if {[catch {set dataFile [open $::dataFilename "r"]} err]} then {
+            puts "Cannot read the data strorage file: $err"
+            puts "Re-run this tool using the \"reset\" action"
+            exit
+        }
+
+        # Extract the values from the file
+        set input [gets $dataFile]
+        if {[scan $input "%d %d %d %d" baseBitCount baseBitErr \
+                                       baseBlockCount baseBlockErr] != 4} then {
+            puts "Data storage file invalid format"
+            puts "Re-run this tool using the \"reset\" action"
+            exit
+	}
+
+        if {$::verbose > 0} then {
+            puts [format "Base data values: %u %u %u %u" \
+                 $baseBitCount $baseBitErr $baseBlockCount $baseBlockErr]
+        }
+    }
+
+    # Calculate the current running totals
+    set nBits      [expr [lindex $berBlerData 0] - $baseBitCount]
+    set nBitErrors [expr [lindex $berBlerData 1] - $baseBitErr]
+    set nBlocks      [expr [lindex $berBlerData 2] - $baseBlockCount]
+    set nBlockErrors [expr [lindex $berBlerData 3] - $baseBlockErr]
+
+    if {$nBits > 0} then {
+        set ber  [format %1.6f [expr 100 * double($nBitErrors) / $nBits]]
+    } else {
+        set ber 0
+    }
+
+    if {$nBlocks > 0} then {
+        set bler [format %1.6f [expr 100 * double($nBlockErrors) / $nBlocks]]
+    } else {
+        set bler 0
+    }
+
+    if {$::csv > 0} then {
+        puts "$count,$nBits,$nBitErrors,$ber%,$nBlocks,$nBlockErrors,$bler%"
+    } elseif {$::html > 0} then {
+        puts "<tr bgcolor=\"#FFFFFF\"><td align=\"center\">$count</td><td align=\"center\">$nBits</td><td align=\"center\">$nBitErrors</td><td align=\"center\">$ber %</td><td align=\"center\">$nBlocks</td><td align=\"center\">$nBlockErrors</td><td align=\"center\">$bler %</td></tr>"
+    } else {
+        puts "Bits: $nBits Errors: $nBitErrors BER: $ber % | Blocks: $nBlocks Errors: $nBlockErrors BLER: $bler %"
+    }
+}
+
+
+########################################################################################
+#
+#   Start of main program
+#
+#     
+
+# Check the command line arguments
+set ::host    "127.0.0.1"
+set ::action  "update"
+# Update timeout in milliseconds
+set ::timeout 1000
+# Default to minimum output
+set ::verbose 0
+# Default to text output not CSV
+set ::csv     0
+# Default to text output not HTML
+set ::html    0
+# Default to not displaying CSV titles
+set ::titles  0
+# Number of readings
+set ::count   1
+
+for {set i 0} {$i < [llength $argv]} {incr i} {
+    set arg [lindex $argv $i]
+    if {$arg == "-h" || $arg == "-host"} then {
+        incr i
+        set ::host [lindex $argv $i]
+    } elseif {$arg == "-v" || $arg == "-verbose"} then {
+        set ::verbose 1
+    } elseif {$arg == "-t" || $arg == "-title"} then {
+        set ::titles 1
+    } elseif {$arg == "-c" || $arg == "-csv"} then {
+        set ::csv 1
+    } elseif {$arg == "-m" || $arg == "-html"} then {
+        set ::html 1
+    } elseif {$arg == "-l" || $arg == "-limit"} then {
+        incr i
+        set ::count [lindex $argv $i]
+    } elseif {$arg == "-d" || $arg == "-dir"} then {
+        incr i
+        set ::dataFilename [lindex $argv $i]/berbler_initvalues
+    } elseif {$arg == "update" || \
+              $arg == "reset"} then {
+        set ::action $arg
+    } elseif {$arg == "auto_refresh" || \
+              $arg == "auto"} then {
+        set ::action "auto_refresh"
+        if {[llength $argv] > [expr $i+1] } then {
+            incr i
+            set ::timeout [lindex $argv $i]
+        }
+    } else {
+        # Unrecognised command line option, print usage help and exit
+        puts "usage: $argv0 \[<options>\] \[reset|update|auto_refersh \[<timeout>\]\]"
+        puts "   Defaults: action = update"
+        puts "             <timeout> = 1000 (milliseconds)"
+        puts "   Options are zero or more of:"
+        puts "    -h |  -host <host address> - Host address of the 3GAP (default 127.0.0.1)."
+        puts "    -c |  -csv - Output the data in CSV format, useful with auto_refresh."
+        puts "    -m |  -html - Output the data in HTML format, useful with auto_refresh."
+        puts "    -v |  -verbose - Verbose output."
+        puts "    -l |  -limit - Use with auto_refresh to define the number of data measurements."
+        puts "               Default 0 meaning no limit."
+        puts "    -d |  -dir - Directory to store the initial data (default /tmp)"
+        exit
+    }
+}
+
+if {$::verbose > 0} then {
+    puts "$argv0 - version $::version"
+    puts "Host $::host Action $::action Repeat Interval $::timeout mSec"
+    puts "Data File $::dataFilename"
+    puts ""
+}
+
+if {$::html > 0} then {
+    puts "<table border=\"1\" bgcolor=\"#000000\">"
+}
+
+if {$::action == "auto_refresh"} then {  
+    set measurement 1
+    while {$count > 0} {
+        processOneReading $measurement
+		incr count -1
+        incr measurement
+		after $::timeout
+    }
+} else {
+    processOneReading 1
+}
+
+if {$::html > 0} then {
+    puts "</table>"
+}
+
+  
+

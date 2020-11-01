@@ -1,0 +1,17 @@
+#!/bin/bash
+PCB_TEMP_FILE=/tmp/pcbtemperature
+LOG_FILE_PATH="/var/ipaccess/logs/sw_boots"
+LOG_FILE="sw_boots.summary"
+
+# read temperature - note this is current temperature rather than temperature
+# when the scan was done, it's assumed the logging happens immediately 
+# following the scan.
+if [ ! -x `which sdgpio_util` ]; then
+    echo "Unable to execute sdgpio_util!"
+    exit 3
+else
+    # read once and throw result away
+    sdgpio_util -readtemp > /dev/null
+    BOARD_TEMP=`sdgpio_util -readtemp | grep Temperature | awk '{print $2}'`
+    echo $BOARD_TEMP > $PCB_TEMP_FILE
+fi

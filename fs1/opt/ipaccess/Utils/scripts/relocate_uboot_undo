@@ -1,0 +1,67 @@
+#!/bin/bash
+###############################################################################
+#
+# relocate_uboot_undo - revert changes made by relocate_uboot script
+#
+###############################################################################
+#
+# This is run via post_swdl_hook to detect downgrades from new to old U-Boot
+# partition layouts. This is required because old versions of U-Boot will only
+# run from the base of Flash.
+#
+###############################################################################
+
+# only run on 224, 226 or 234 variants
+FS=`/opt/ipaccess/Utils/scripts/getVarVal /etc/sw_description.dat FS_VARIANT`
+FSN=${FS:0:3}
+if [ "$FSN" != "224" ] && [ "$FSN" != "226" ] && [ "$FSN" != "234" ]; then
+	exit 0
+fi
+
+NEW_MTDPARTS="\
+physmap-flash.0:384K@0x03e00000(uBoot),256K@0x40000(env),2M(kernel1),2M(kernel2),3584K(config),\
+27M(FS1),27M(FS2),256K@0(fsboot),128K@0x03e60000(oem_divert2),256K(oem_data1),256K(oem_data2),\
+256K(oem_lib1),256K(oem_lib2),256K(resv),256K(ipa_calib)"
+
+OLD_MTDPARTS="\
+physmap-flash.0:256K(uBoot),256K(env),2M(kernel1),2M(kernel2),3584K(config),\
+27M(FS1),27M(FS2),256K(oem_divert1),256K(oem_divert2),256K(oem_data1),256K(oem_data2),\
+256K(oem_lib1),256K(oem_lib2),256K(resv),256K(ipa_calib)"
+
+RUNNING_NEW_MTDPARTS=`grep -c fsboot /proc/mtd`
+
+if [ "$RUNNING_NEW_MTDPARTS" != "1" ]; then
+	echo "*************************************************************"
+	echo "***       ERROR - running old mtd partition layout!!      ***"
+	echo "*************************************************************"
+	exit 1
+fi
+
+DOWNLOADED_NEW_UBOOT=`strings /dev/mtd0 | grep -c "(fsboot)"`
+
+if [ "$DOWNLOADED_NEW_UBOOT" = "1" ]; then
+	exit 1
+fi
+
+# we've downloaded an old version of U-Boot so need to revert the mtdparts
+# and copy it to the old Flash location
+echo "*************************************************************"
+echo "***         downgrading bootloader Flash layout           ***"
+echo "*************************************************************"
+# revert mtdparts
+fw_setenv mtdparts $OLD_MTDPARTS
+# copy U-Boot image from 0x03e00000 to 0x00000000 - note mtd7 and mtd0 will 
+# be swapped once running with old mtdparts
+flash_eraseall /dev/mtd7
+# can't copy entire device as U-Boot partition size was increased - it will
+# fit inside 256k though as it's an old image
+dd if=/dev/mtd0 of=/dev/mtd7 bs=1024 count=192
+# copy metadata+sigs from end of partition
+dd if=/dev/mtd0 of=/dev/mtd7 bs=1024 count=64 skip=320 seek=192
+
+# reboot not required here and would be unexpected as we're still running
+# swdl. Above changes have no effect until reboot. If swdl_client is run 
+# again before reboot, repeating the above changes would be acceptable.
+
+exit 0
+

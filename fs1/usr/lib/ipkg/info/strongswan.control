@@ -1,0 +1,9 @@
+Package: strongswan
+Priority: optional
+Version: 4.2.12
+Section: misc
+Architecture: arm
+Maintainer: ip.access
+Source: ip.access
+Description: IPsec client
+Depends: gmp libxml zlib

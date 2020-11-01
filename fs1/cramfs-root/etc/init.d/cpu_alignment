@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+
+
+PROG="cpu_alignment"
+RETVAL=0
+
+start() {
+    echo -n "Disabling CPU alignment trap: "
+    echo 4 >/proc/cpu/alignment
+    echo "OK"
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    *)
+        echo "Usage: $0 {start}"
+        exit 1
+esac
+
+exit $RETVAL

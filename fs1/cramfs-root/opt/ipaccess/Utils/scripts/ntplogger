@@ -1,0 +1,136 @@
+#!/bin/bash
+#
+# ntplogger - script to periodically copy NTP stats files from
+#             /tmp (RAM) to /var/ipaccess (FLASH)
+#
+# it is assumed that Basic OAM uploads these logs file during startup
+# using an upload file mask of /var/ipaccess/ntp/ntpstats/*stats*
+#
+# MAXLEN
+#  MAXLEN is sized to limit the size of the files that can appear in 
+#  /var/ipaccess, a 3.5MB compressed partition. Its sized 
+#  to be able to accomodate rawstats, peerstats and ipastats
+#  generated over ~48hrs of ntp operation. Over this period:
+#   fsmstats ~50kB  (ignore)
+#   ipastats ~3.5MB (compresses ~0.9MB) (~10000 lines)
+#   peerstats ~.7MB (compresses ~0.25MB) (~10000 lines)
+#   rawstats ~1.4MB (compresses ~0.4MB) (~10000 lines)
+#   sysstats ~50kB (ignore)
+# hence the compressed total for a weekend run could be 1.55MB compressed, 
+# which should be accomodated by the partition.
+
+TMP_STATS_DIR=/tmp/ntp/ntpstats
+FLASH_STATS_DIR=/var/ipaccess/ntp/ntpstats
+OSC_HISTORY=/var/ipaccess/osc_history.dat
+HEADRETAIN=150
+# when trimming leave a gap at the end so that we don't trim every time
+TAILGAP=100
+# maximum length of each file, in number of lines
+MAXLEN=10000
+# maximum number of lines to retain in osc_history.dat
+MAXOSCLEN=1000
+TODAY=`date -I | awk -F- '{ print $1$2$3 }'`
+# retry period set at .5min less than the default basicoam check period of 5min
+RETRY_TIMEOUT_SEC=270
+
+# don't do anything with NTP log files while Basic OAM is running
+# this just means logs will stay in /tmp until this script runs again
+# retry every 10s for the timeout period
+
+let _timeout=0
+while [ -f /tmp/basicoam.lock ] && [ "${_timeout}" -lt ${RETRY_TIMEOUT_SEC} ]; 
+do
+    echo "Basic OAM still running, assuming upload in progress. Waiting..."
+    let "_timeout = $_timeout + 10"
+    sleep 10
+done
+
+# check whether the lock is still held
+if [ -f /tmp/basicoam.lock ]; then    
+    echo "Basic OAM still holds lock after retry timeout period ${RETRY_TIMEOUT_SEC}. Giving up and exiting."
+    exit
+fi
+
+# retain the first $HEADRETAIN lines of each log file added after reboot
+function retainearlylogs()
+{
+    if [ ! -f $FLASH_STATS_DIR/${1}_early ]; then
+        if [ -f $FLASH_STATS_DIR/$1 ]; then
+            head -n $HEADRETAIN $FLASH_STATS_DIR/$1 > $FLASH_STATS_DIR/${1}_early
+        else
+            head -n $HEADRETAIN $TMP_STATS_DIR/$1 > $FLASH_STATS_DIR/${1}_early
+        fi
+    fi
+}
+
+# copy specified file from tmp to flash and ensure it stays under the max
+# line number limit
+# $1 = filename
+# $2 = statstype
+function copystatsfile()
+{
+    NEW_LINES=`wc -l $TMP_STATS_DIR/$1 | awk '{print $1}'`
+    
+    if [ -f $FLASH_STATS_DIR/$2 ]; then
+        CURRENT_LINES=`wc -l $FLASH_STATS_DIR/$2 | awk '{print $1}'`
+    else
+        CURRENT_LINES=0
+    fi
+    
+    rm -f $FLASH_STATS_DIR/${2}_new
+
+    echo "File:          $1"
+    echo "Type:          $2"
+    echo "New lines:     $NEW_LINES"
+    echo "Current lines: $CURRENT_LINES"
+    
+    if [ $NEW_LINES -ge $(($MAXLEN - $TAILGAP)) ]; then
+        # new file is larger than max allowed, trim and replace current
+        retainearlylogs $2
+        head -n $(($MAXLEN - $TAILGAP)) $TMP_STATS_DIR/$1 > $FLASH_STATS_DIR/${2}_new
+        mv $FLASH_STATS_DIR/${2}_new $FLASH_STATS_DIR/$2
+    elif [ $(($CURRENT_LINES + $NEW_LINES)) -gt $MAXLEN ]; then
+        # current plus new will be larger than allowed
+        retainearlylogs $2
+        tail -n $(($MAXLEN - $NEW_LINES - $TAILGAP)) $FLASH_STATS_DIR/$2 >  $FLASH_STATS_DIR/${2}_new
+        tail -n $(($NEW_LINES))                      $TMP_STATS_DIR/$1   >> $FLASH_STATS_DIR/${2}_new
+        mv $FLASH_STATS_DIR/${2}_new $FLASH_STATS_DIR/$2
+    else
+        # there's room, just append
+        cat $TMP_STATS_DIR/$1 >> $FLASH_STATS_DIR/$2
+    fi
+    
+    rm $TMP_STATS_DIR/$1
+}
+
+# trim to osc_history file
+if [ -f $OSC_HISTORY ]; then
+    if [ `wc -l $OSC_HISTORY | awk '{print $1}'` -ge $MAXOSCLEN ]; then
+        tail -n $(($MAXOSCLEN - $TAILGAP)) $OSC_HISTORY > /tmp/osc_history.new.dat
+        [ $? == 0 ] && mv /tmp/osc_history.new.dat $OSC_HISTORY
+    fi
+fi
+
+#
+if [ "`ls $TMP_STATS_DIR/*stats.*`" == "" ]; then
+    echo "No NTP stats to copy"
+    exit 0
+fi
+
+# remove early stats the first time we run following a reboot
+# they'll be generated again when the logs roll over
+if [ ! -f $TMP_STATS_DIR/earlystatsremoved ]; then
+    rm -rf $TMP_STATS_DIR/*stats_early
+    touch $TMP_STATS_DIR/earlystatsremoved
+fi
+
+mkdir -p $FLASH_STATS_DIR
+
+for f in $TMP_STATS_DIR/*stats.*; do
+    t=`basename $f | awk -F. '{ print $1 }' `
+    echo Testing $f against todays file $t.$TODAY
+    if [ `basename $f` != $t.$TODAY ]; then
+        copystatsfile `basename $f` $t
+    fi
+done
+

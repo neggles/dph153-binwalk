@@ -1,0 +1,175 @@
+#!/bin/bash
+#
+# ubootenvcheck
+#
+# script to verify/correct parts of the U-Boot environment
+#
+BOOTDEV=
+
+# determine which FS partition we're booting from
+for p in $(cat /proc/cmdline); do
+    case $p in
+        root=*)
+            BOOTDEV=`echo $p | awk -F= '{print $2}'`
+            ;;
+    esac
+done
+
+BOOTBANK=1
+if [ "$BOOTDEV" = /dev/mtdblock6 ]; then
+    BOOTBANK=2
+fi
+
+# run U-Boot relocation script if present
+UBOOT_RELOCATE=/opt/ipaccess/Utils/scripts/relocate_uboot
+[ -x $UBOOT_RELOCATE ] && $UBOOT_RELOCATE
+
+# If there isn't a working copy of the hw_description.dat file in
+# /var/ipaccess, then copy the original from the factory_config
+# partition.
+HWDESC_FILE=/var/ipaccess/factory_config/hw_description.dat
+HWDESC_COPY=/var/ipaccess/hw_description.dat
+if [ ! -f $HWDESC_COPY -a -f $HWDESC_FILE ]; then
+    echo "WARNING: $HWDESC_COPY is missing, copying."
+    rm -rf $HWDESC_COPY
+    cp -f $HWDESC_FILE $HWDESC_COPY
+fi
+
+# check that the radiocal.dat symlink (or file) exists. This allows for the
+# symlink to exist but the file it's pointing to being missing, e.g.
+# the factory config parition is not mounted or in some way dodgy, we can't
+# recover from this by recreating the symlink so don't bother trying.
+RADIOCAL=/var/ipaccess/radiocal.dat
+if [ ! -f $RADIOCAL -a ! -h $RADIOCAL ]; then
+    echo "WARNING: $RADIOCAL is missing, linking."
+    rm -rf $RADIOCAL
+    ln -sf /var/ipaccess/factory_config/radiocal.dat $RADIOCAL
+fi
+
+# Separate configuration files for each bank of flash are held in directories
+# /var/ipaccess/config_bank_1 and /var/ipaccess/config_bank_2. The symlink
+# /var/ipaccess/config is pointed at the correct configuration file
+# directory for the currently running flash bank.
+# This allows an AP to be switched between flash banks without losing
+# the configuration.
+
+# Path to configuration files for this bank of Flash
+CONFIG_FILE_PATH=/var/ipaccess/config_bank_$BOOTBANK
+
+# Create the directory for configuration files if it doesn't already exist
+if [ ! -d $CONFIG_FILE_PATH ]; then
+    rm -rf $CONFIG_FILE_PATH
+    mkdir $CONFIG_FILE_PATH
+fi
+
+
+# Create symlink to the current bank's configuration file directory
+if [ "`readlink /var/ipaccess/config`" != "$CONFIG_FILE_PATH" ]; then
+    # link is wrong or missing, fix it
+    rm -rf /var/ipaccess/config
+    ln -s $CONFIG_FILE_PATH /var/ipaccess/config
+fi
+
+BANK=`fw_printenv -n bank`
+
+echo "U-Boot bank variables at startup"        > /tmp/boot_params
+echo "Booted from bank $BOOTBANK ($BOOTDEV)"  >> /tmp/boot_params
+echo "U-Boot bank was  $BANK"                 >> /tmp/boot_params
+
+#
+# Pick up the MAC addresses from hw_decription.dat and the hardware
+# for checking later in script
+#
+ETHADDR=$(/opt/ipaccess/Utils/scripts/getVarVal $HWDESC_FILE MAC_ADDRESS)
+
+# This is before any VLAN config, so can use "eth0"
+mac=`/sbin/ifconfig eth0 | grep HWaddr | awk '{ print $5}'`
+
+echo "MAC address from factory config: $ETHADDR" >> /tmp/boot_params
+echo "MAC address from hardware:       $mac"     >> /tmp/boot_params
+
+#
+# Check for lost U-Boot environment.
+# If we couldn't get a value of "bank" we need to rewrite the environment.
+#
+if [ -z "$BANK" ]; then
+    echo "*********************************************************"
+    echo "*** U-Boot environment lost, restoring                ***"
+    echo "*********************************************************"
+
+    echo "Restoring U-Boot environment"  >> /tmp/boot_params
+    fw_setenv bank $BOOTBANK > /dev/null
+    fw_printenv bank  >> /tmp/boot_params
+
+    BANK=$BOOTBANK
+
+    # Set MAC address in uboot environment to match MAC address in hw_description.dat file (if there is one).
+    if [ -n "$ETHADDR" ]; then
+      echo "Setting MAC address in uboot environment to $ETHADDR....."
+      fw_setenv ethaddr $ETHADDR > /dev/null
+      
+      # Check that the hardware MAC address is correct - reboot if it isn't
+      if [ "$ETHADDR" != "$mac" ]; then
+        # We can't reboot Customer A's hardware at this stage, so just continue
+        # The correct MAC address will be set on the next reboot
+        echo "MAC address in hardware is wrong ($mac), new value ($ETHADDR) will be used on next boot"
+        #echo "MAC address in hardware is wrong ($mac), rebooting........"
+        #reboot
+        #echo Sleeping to await reboot................
+        #sleep 10
+      else
+        echo "MAC address in hardware is correct, continuing......."
+      fi
+    else
+      echo "WARNING: No MAC address found in $HWDESC_FILE." >> /tmp/boot_params
+      echo "WARNING: No MAC address found in $HWDESC_FILE."
+      echo "Continuing boot with hardware MAC address set to $mac"
+    fi
+    
+else
+    #
+    # UBoot environment valid, check the MAC Address
+    #
+    if [ -n "$ETHADDR" ]; then
+        if [ "$ETHADDR" != "$mac" ]; then
+            echo "*********************************************************"
+            echo "*** MAC address does not match factory config, fixing ***"
+            echo "*** Changing $mac to $ETHADDR   ***"
+            echo "*********************************************************"
+
+            fw_setenv ethaddr $ETHADDR > /dev/null
+
+            echo Rebooting to install new MAC address..........
+            /opt/ipaccess/Utils/scripts/set_reboot_cause MISCELLANEOUS "U-Boot MAC address mismatch"
+            reboot
+            echo Sleeping to await reboot................
+            sleep 10
+        fi
+    else
+      echo "WARNING: No MAC address found in $HWDESC_FILE." >> /tmp/boot_params
+      echo "WARNING: No MAC address found in $HWDESC_FILE."
+      echo "Continuing boot with hardware MAC address set to $mac"
+    fi
+fi
+
+# Ensure that the default boot commands are updated to indicate failures correctly
+if fw_printenv -n altbootcmd | grep "\brun \+set_led \+red\b" ; then
+    altbootcmd=`fw_printenv -n altbootcmd | sed 's/run \+set_led \+red/set_led red/'`
+    fw_setenv altbootcmd "${altbootcmd}"
+fi
+
+#
+# Check for a boot from the alternate bank.
+#
+# If U-Boot's bank doesn't match current boot device we must have 
+# booted using the altbootcmd, update U-Boot's environment to make this
+# change permanent.
+# Then swdl_client is able to reprogram the bad bank as the alternate.
+if [ "$BANK" != "$BOOTBANK" ]; then
+    echo "*********************************************************"
+    echo "*** Booting from alternate bank, updating environment ***"
+    echo "*********************************************************"
+    fw_setenv bank $BOOTBANK > /dev/null
+    fw_printenv bank  >> /tmp/boot_params
+    touch /tmp/booted_from_alt
+fi

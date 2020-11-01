@@ -1,0 +1,178 @@
+#!/bin/sh
+#
+# Start-up script for NWL mode
+# Load FPGA, load NWL image into pico array, open firewall port
+
+. /etc/init.d/functions
+
+PAIMAGE=/opt/ipaccess/bin/nwl_subsystem_Dev0_3g.pa
+RETVAL=0
+
+IPTABLES=/usr/sbin/iptables
+INTIF=lo
+EXTIF=`cat /tmp/wanif`
+
+# The default type is 3G NWL PHY
+if [ "$PHY_TYPE" == "" ]
+then
+export PHY_TYPE=3G
+fi
+
+open_firewall_port() {
+    # TCP incoming external
+    $IPTABLES -I INPUT -i $EXTIF -p tcp -m state --state NEW -m multiport --dports $1 -j ACCEPT
+}
+
+rfOff()
+{
+    sdgpio_util -txifmodulation 0
+}
+
+
+start() {
+
+    echo
+    echo "**** Starting NWL mode ****"
+    echo
+
+	if [ "$PHY_TYPE" == "3G" ] || [ "$PHY_TYPE" == "3g" ]
+	then
+		# Setup the AP for 3G NWL
+
+        echo
+        echo "**** Starting 3G NWL mode ****"
+        echo
+
+    	# Load the FPGA Configuration 
+    	echo "Loading FPGA Image"
+    	sdgpio_util -fpgaload3G
+
+        # Cleanly reset the Pico for loading other images
+        sdgpio_util -stopPico
+        sdgpio_util -resetPico
+
+        # sdgpio_util must be run after programming the FPGA
+        sdgpio_util
+
+        picoifapp -c "picoif.loadFile (0, \"$PAIMAGE\") start()"
+
+        # This was in picoinit. Do we still need it?
+        sdgpio_util -safestart
+
+        /etc/init.d/dtcsIf start
+        /etc/init.d/nwlIf start
+        /etc/init.d/picostatus start
+    
+        # Set gain table and configure radio.
+        table=11
+        uluarfcn=412
+        echo "Setting gain table $table"
+        sdgpio_util -agcupdate $table 1
+
+        echo "Setting DL receive to $uluarfcn"
+        sdgpio_util -uluarfcn $uluarfcn
+
+    else
+		# Setup the AP for 2G NWL
+
+        echo
+        echo "**** Starting 2G NWL mode ****"
+        echo
+	
+		export PAIMAGE=/opt/ipaccess/bin/nwl_subsystem_Dev0_2g.pa
+
+    	# Load the FPGA Configuration 
+    	echo "Loading FPGA Image"
+    	sdgpio_util -fpgaload2G
+
+        # Cleanly reset the Pico for loading other images
+        sdgpio_util -stopPico
+        sdgpio_util -resetPico
+
+        # sdgpio_util must be run after programming the FPGA
+        sdgpio_util
+
+        picoifapp -c "picoif.loadFile (0, \"$PAIMAGE\") start()"
+
+        # This was in picoinit. Do we still need it?
+        sdgpio_util -safestart
+
+        /etc/init.d/dtcsIf start
+        /etc/init.d/nwlIf start
+        /etc/init.d/picostatus start
+   
+        # Set gain table and configure radio.
+        table=20
+        ularfcn=1037
+        gsmband=4
+        echo "Setting gain table $table"
+        sdgpio_util -agcupdate $table 1
+
+        echo "Setting DL receive to $ularfcn"
+        sdgpio_util -ularfcn $ularfcn $gsmband
+
+    fi
+
+    # Set LED on steady
+    echo "F" >/dev/leddriver
+
+    # Open port 10000 in firewall
+    echo "Opening port 10000 in firewall"
+    open_firewall_port 10000
+
+    echo "Opening port 36000 in firewall"
+    open_firewall_port 36000
+    
+    echo "Opening port 10002 in firewall"
+    open_firewall_port 10002
+    
+    echo "Opening port 8089 in firewall"
+    open_firewall_port 8089
+
+    echo
+    echo "End of NWL mode start-up"
+    echo
+
+}
+
+stop() {
+    rfOff
+
+    /etc/init.d/dtcsIf stop
+    /etc/init.d/nwlIf stop
+    /etc/init.d/picostatus stop
+
+    # Turn LED off
+    echo "A" >/dev/leddriver
+
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+
+restart() {
+    stop
+    start
+}
+
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

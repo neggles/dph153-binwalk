@@ -1,0 +1,10 @@
+Package: gmp
+Provides: gmp
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 4.2.1
+Description: libgmp run-time
+Source: ip.access

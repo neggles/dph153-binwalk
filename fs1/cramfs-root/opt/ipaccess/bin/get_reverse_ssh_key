@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+# get_reverse_ssh_key - display public portion of AP's SSH key
+#
+
+ENV_VARIABLE_SOURCE='/var/ipaccess/nv_env.sh'
+if [ -e $ENV_VARIABLE_SOURCE ]; then
+    source $ENV_VARIABLE_SOURCE
+fi
+
+# Default the location of the ssh key file
+if [ "$ENV_SSH_KEY_FILE" == "" ]; then
+    ENV_SSH_KEY_FILE=/var/ipaccess/id_3gap
+fi
+
+# if a key already exists just print the public portion
+if [ -f $ENV_SSH_KEY_FILE ]; then
+    dropbearkey -f $ENV_SSH_KEY_FILE -y
+    if [ $? == 0 ]; then
+        exit 0
+    else
+        # remove invalid key
+        rm -f $ENV_SSH_KEY_FILE
+    fi
+fi
+
+# no/invalid key, generate a new one
+dropbearkey -f $ENV_SSH_KEY_FILE -t rsa

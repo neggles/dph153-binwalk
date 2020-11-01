@@ -1,5 +1,23 @@
+dph-151 parts:
 
+Name        Filesys     Start       End         Size (b)    Size (KB)
+uBoot       raw         0x0000000   0x0040000   0x0040000   256
+env         raw         0x0040000   0x0080000   0x0040000   256
+kernel1     zImage      0x0080000   0x0280000   0x0200000   2048
+kernel2     zImage      0x0280000   0x0480000   0x0200000   2048
+config      jffs2       0x0480000   0x0800000   0x0380000   3584
+fs1 cramfs  big-endian  0x0800000   0x2300000   0x1B00000   27648
+fs2 cramfs  big-endian  0x2300000   0x3E00000   0x1B00000   27648
+oem_divert1 jffs2       0x3E00000   0x3E40000   0x0040000   256
+oem_divert2 jffs2       0x3E40000   0x3E80000   0x0040000   256
+oem_data1   jffs2       0x3E80000   0x3EC0000   0x0040000   256
+oem_data2   jffs2       0x3EC0000   0x3F00000   0x0040000   256
+oem_lib1    jffs2       0x3F00000   0x3F40000   0x0040000   256
+oem_lib2    jffs2       0x3F40000   0x3F80000   0x0040000   256
+reserved    jffs2       0x3F80000   0x3FC0000   0x0040000   256
+ipa_calib   jffs2       0x3FC0000   0x4000000   0x0040000   256
 
+dph-153 uboot mtdparts:
 
 physmap-flash.0:384K@0x03e00000(uBoot)
 256K@0x40000(env)
@@ -16,6 +34,8 @@ physmap-flash.0:384K@0x03e00000(uBoot)
 256K(oem_lib2)
 256K(resv)
 256K(ipa_calib)
+
+layout?:
 
 mtd 0x0000000 0x003FFFFF 256KiB  fsboot
 mtd 0x0040000 0x007FFFFF 256KiB  env

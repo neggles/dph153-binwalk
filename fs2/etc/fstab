@@ -2,6 +2,7 @@
 #
 # <file system> <mount point>   <type>      <options>                  <dump>  <pass>
 proc            /proc           proc        defaults                   0       0
+none            /dev/pts        devpts      gid=5,mode=620             0       0
 config          /config         configfs    defaults                   0       0
 sys             /sys            sysfs       defaults                   0       0
 none            /tmp            tmpfs       size=15m                   0       0

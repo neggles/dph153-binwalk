@@ -1,32 +1,17 @@
 #!/bin/sh
 #
 # iptables startup script
-# Copyright (c) 2007 ip.access Ltd.
 #
-
 ME=`basename $0`
 IPTABLES=/usr/sbin/iptables
-IP6TABLES=/usr/sbin/ip6tables
 DEFAULT_RULES=/etc/sysconfig/iptables-rules
 DEFAULT_NANO_RULES=/etc/sysconfig/iptables-nano-rules
 VARIANT_RULES=/etc/sysconfig/iptables-$FS_VARIANT-rules
 NVENV=/var/ipaccess/nv_env.sh
-IPV6_FN=/proc/net/if_inet6
 
 if [ -f $NVENV ]; then
     source $NVENV
 fi
-
-# Function returns true if kernel supports both IPv4 and IPv6
-# Checks for the presence of appropriate file
-ipv4andv6Supported()
-{
-    if [ -f ${IPV6_FN} ]; then
-        return 0
-    else
-        return 1
-    fi
-}
 
 flush()
 {
@@ -35,24 +20,6 @@ flush()
     $IPTABLES -F -t mangle
     $IPTABLES -X -t mangle
     $IPTABLES -X
-
-    if ipv4andv6Supported; then
-        $IP6TABLES -F
-        $IP6TABLES -F -t mangle
-        $IP6TABLES -X -t mangle
-        $IP6TABLES -X
-    fi
-}
-
-ipv6_rules()
-{
-    if ipv4andv6Supported; then
-        # Some rules for IPv6
-        $IP6TABLES -A INPUT -i eth0 -s ::1 -j DROP
-        $IP6TABLES -A INPUT -i eth1 -s ::1 -j DROP
-        $IP6TABLES -A INPUT -i eth2 -s ::1 -j DROP
-        $IP6TABLES -A INPUT -i eth3 -s ::1 -j DROP
-    fi
 }
 
 default_policy()
@@ -67,23 +34,11 @@ default_policy()
     $IPTABLES -P INPUT   $POLICY && \
     $IPTABLES -P FORWARD $POLICY && \
     $IPTABLES -P OUTPUT  $POLICY
-
-    if ipv4andv6Supported; then
-        $IP6TABLES -P INPUT ACCEPT
-        $IP6TABLES -P FORWARD ACCEPT
-        $IP6TABLES -P OUTPUT ACCEPT
-    fi
 }
 
 if [ ! -x $IPTABLES ]; then
     echo "$ME: Can't run $IPTABLES"
     exit 1
-fi
-if ipv4andv6Supported ; then
-    if [ ! -x $IP6TABLES ]; then
-        echo "$ME: Can't run $IP6TABLES"
-        exit 1
-    fi
 fi
 
 case "$1" in
@@ -96,7 +51,6 @@ case "$1" in
             if [ -x "$VARIANT_RULES" ]; then
                 echo "$ME: applying rules from `basename $VARIANT_RULES`"
                 $VARIANT_RULES
-                ipv6_rules
             else
                 # apply different default rules for nano variants
                 RULES=$DEFAULT_RULES
@@ -105,7 +59,6 @@ case "$1" in
                 if [ -x "$RULES" ]; then
                     echo "$ME: applying rules from `basename $RULES`"
                     $RULES
-                    ipv6_rules
                 else
                     echo "$ME: no rules defined for variant $FS_VARIANT"
                     default_policy ACCEPT
@@ -122,13 +75,7 @@ case "$1" in
         default_policy DROP
         ;;
     status)
-        echo IPv4:
         $IPTABLES -L --line-numbers
-        if ipv4andv6Supported; then
-            echo
-            echo IPv6:
-            $IP6TABLES -L --line-numbers
-        fi
         ;;
     *)
 esac

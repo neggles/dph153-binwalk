@@ -16,7 +16,6 @@ PROG_DSLGSYSREG="Dslg_SysRegistry"
 PROG_GPSTEST="gpstest"
 WDIR=/opt/cisco
 RETVAL=0
-HW_DESC_FILE="/var/ipaccess/hw_description.dat"
 
 initDslmSsp()
 {
@@ -26,14 +25,7 @@ initDslmSsp()
 
     ./$PROG_DSLMSSP
     ./rmmwd
-#removing the /etc/ipkg.conf for security reasons this has to be clenead up by ipaaccess
-#this file is used during ipkg insatllation internally by ipa.
-    if [ -f /etc/ipkg.conf ]; then                            
-        echo "cleaning the ipkg.conf"
-        mount -o remount,rw /dev/root 
-        rm -f /etc/ipkg.conf
-        mount -o remount,ro /dev/root
-    fi 
+
     cd $PDIR
 }
 
@@ -108,87 +100,19 @@ stopDslgSysReg() {
 
 start()
 {
-    TAG="OEM_GPS_ENABLED"
-    gpsExist=0
-    cat $HW_DESC_FILE | while read LINE
-    do
-      if [ "$TAG" == "$LINE" ]; then
-        gpsExist=1
-        read LINE
-        read LINE
-        if [ "$LINE" == "0" ]; then
-          LINE=""
-          echo INVALID TAG $TAG
-
-         # ------------------ GPS Process initialization when invalid tag read  ------
-          echo -n "Starting $PROG_GPSTEST: By Default"
-          is_app_running $PROG_GPSTEST
-          if [ $? != $TRUE ]; then
-            /opt/cisco/gpstest 4 5 &
-            RETVAL=$?
-            if [ $RETVAL -eq 0 ]; then
-              echo OK
-            else
-              echo FAILURE
-            fi
-          else
-               echo "FAILURE (already running)"
-          fi
-         # ------------------ GPS Process initialization when invalid tag read ------
-
-        else
-          read LINE
-          if [ "$LINE" == "1" ]; then
-            # ------------------ GPS Process initialization when valid tag read------
-            echo -n "Starting $PROG_GPSTEST: "
-            is_app_running $PROG_GPSTEST
-            if [ $? != $TRUE ]; then
-              /opt/cisco/gpstest 4 5 &
-              RETVAL=$?
-              if [ $RETVAL -eq 0 ]; then
-                echo OK
-              else
-                echo FAILURE
-              fi
-            else
-                 echo "FAILURE (already running)"
-            fi
-            # ------------------ GPS Process initialization when invalid tag read ------
-          fi
-        fi
-        break
-      fi
-    done
-    if [ $gpsExist -eq 0 ]; then
-         # ------------------ GPS Process initialization when GPS Tag is not available  ------
-         echo -n "Starting $PROG_GPSTEST: "
-         is_app_running $PROG_GPSTEST
-         if [ $? != $TRUE ]; then
-           /opt/cisco/gpstest 4 5 &
-           RETVAL=$?
-           if [ $RETVAL -eq 0 ]; then
-             echo OK
-           else
-             echo FAILURE
-           fi
-         else
-              echo "FAILURE (already running)"
-         fi
-        # ------------------ GPS Process initialization when GPS Tag is not available ------
-    fi
-#  echo -n "Starting $PROG_GPSTEST: "                                  
-#  is_app_running $PROG_GPSTEST                                        
-#  if [ $? != $TRUE ]; then                                            
-#      /opt/cisco/gpstest 4 5 &                                        
-#      RETVAL=$?                                                       
-#      if [ $RETVAL -eq 0 ]; then                                      
-#           echo OK                                                    
-#      else                                                            
-#           echo FAILURE                                               
-#      fi                                                              
-#  else                                                                
-#      echo "FAILURE (already running)"                                
-#  fi       
+  echo -n "Starting $PROG_GPSTEST: "                                  
+  is_app_running $PROG_GPSTEST                                        
+  if [ $? != $TRUE ]; then                                            
+      /opt/cisco/gpstest 4 5 &                                        
+      RETVAL=$?                                                       
+      if [ $RETVAL -eq 0 ]; then                                      
+           echo OK                                                    
+      else                                                            
+           echo FAILURE                                               
+      fi                                                              
+  else                                                                
+      echo "FAILURE (already running)"                                
+  fi       
 
 #  Removed in SR 5.2 since it is not required any more
 #  . /var/ipaccess/opmode.sh
@@ -230,93 +154,10 @@ start()
     mkdir -p /var/ipaccess/cisco
   fi
 #  if [ ! -f /var/ipaccess/cisco/dslg_def_cfg.xml.gz ]; then
-
-   if [ -f /opt/cisco/dslg_def_cfg_1.xml.gz ]; then
-          TAG="OEM_MODEL_NAME"
-              cat $HW_DESC_FILE | while read LINE
-                  do
-                     if [ "$TAG" == "$LINE" ]; then
-                         echo "MODEL NAME FOUND"
-                         read LINE
-                         read LINE
-                         read LINE
-                         if [ "$LINE" == "DPH151-AT V2" ]; then
-                             echo $LINE
-                             echo "151"
-                             cp -f /opt/cisco/dslg_def_cfg_1.xml.gz /var/ipaccess/cisco/dslg_def_cfg.xml.gz
-                         else
-                             echo $LINE
-                             echo "153"
-                             cp -f /opt/cisco/dslg_def_cfg.xml.gz /var/ipaccess/cisco/dslg_def_cfg.xml.gz
-                         fi
-                     fi
-                  done
-   else
-       cp -f /opt/cisco/dslg_def_cfg.xml.gz /var/ipaccess/cisco/dslg_def_cfg.xml.gz
-   fi
-    
-
-#################### Added for GA 1.0 US1175 --->>> #############################
-    if [ -f /var/ipaccess/cisco/dslg_def_cfg.xml ]; then
-       rm dslg_def_cfg.xml
-    fi 
-    gunzip /var/ipaccess/cisco/dslg_def_cfg.xml.gz
-    TAG="REDIRECTOR_URL"
-    OLD_URL='\"AcsUrl.*Record.*\>'
-    cat $HW_DESC_FILE | while read LINE
-    do
-      if [ "$TAG" == "$LINE" ]; then
-        read LINE
-        read LINE
-        if [ "$LINE" == "0" ]; then
-          LINE=""
-          echo INVALID TAG $TAG 
-        else
-          read LINE
-        fi
-        NEW_URL='\"AcsUrl\" type\=\"astr\"\>'"$LINE"'\</Record'
-        sed  s=$OLD_URL="$NEW_URL"=g /var/ipaccess/cisco/dslg_def_cfg.xml > /tmp/dslg_def_cfg_temp.xml
-        break
-      fi
-    done  
-    mv /tmp/dslg_def_cfg_temp.xml /var/ipaccess/cisco/dslg_def_cfg.xml
-    gzip -f /var/ipaccess/cisco/dslg_def_cfg.xml
-    
-    
-#################### <<<-----Added for GA 1.0 US1175 #############################
-
+    cp -f /opt/cisco/dslg_def_cfg.xml.gz /var/ipaccess/cisco/dslg_def_cfg.xml.gz
 #  fi
 
   cp -f /opt/cisco/tr069_def_cfg.xml.gz /var/ipaccess/cisco/tr069_def_cfg.xml.gz
-
-#################### Added for GA 1.0 US1175 --->>>#############################
-    if [ -f /var/ipaccess/cisco/tr069_def_cfg.xml ]; then
-       rm tr069_def_cfg.xml
-    fi
-    gunzip /var/ipaccess/cisco/tr069_def_cfg.xml.gz
-    TAG="REDIRECTOR_URL"
-    OLD_URL='\"AcsUrl.*Record.*\>'
-    cat $HW_DESC_FILE | while read LINE
-    do
-      if [ "$TAG" == "$LINE" ]; then
-        read LINE
-        read LINE
-        if [ "$LINE" == "0" ]; then
-          LINE=""
-          echo INVALID TAG $TAG
-        else
-          read LINE
-        fi
-        NEW_URL='\"AcsUrl\" type\=\"astr\"\>'"$LINE"'\</Record'
-        sed  s=$OLD_URL="$NEW_URL"=g /var/ipaccess/cisco/tr069_def_cfg.xml > /tmp/tr069_def_cfg_temp.xml
-        break
-      fi
-    done
-    mv /tmp/tr069_def_cfg_temp.xml /var/ipaccess/cisco/tr069_def_cfg.xml
-    gzip -f /var/ipaccess/cisco/tr069_def_cfg.xml
-    
-
-#################### <<<---- Added for GA 1.0 US1175 #############################
 
   if [ -f /var/ipaccess/tempShutdown ]; then                                                                                        
       rm -f /var/ipaccess/cisco/dslg_cur_cfg.xml.gz /var/ipaccess/cisco/dslg_bak_cfg.xml.gz                                           

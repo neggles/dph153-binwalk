@@ -5,8 +5,8 @@
 # Reset uses the default configuration if it does not exists for a application
 ####################################################################################
 
-RMMCMHS="/var/ipaccess/cisco/`awk '/^Version:/{print \"rmmcmhs-\" $2}' /opt/cisco/control`"
-[ -x ${RMMCMHS} ] && exec ${RMMCMHS} $*
+RMM="/var/ipaccess/cisco/`awk '/^Version:/{print \"rmm-\" $2}' /opt/cisco/control`"
+[ -x ${RMM} ] && exec ${RMM} $*
 
 . /etc/init.d/functions
 

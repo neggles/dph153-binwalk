@@ -1,37 +1,5 @@
 #!/bin/bash
 
-
-TEMP_FILE_244=/sys/bus/i2c/devices/0-0048/temp_max
-TEMP_FILE_282=/sys/bus/i2c/devices/0-0048/temp1_max
-SW_DESC=/etc/sw_description.dat
-GETVARVAL=/opt/ipaccess/Utils/scripts/getVarVal
-FS_TYPE=`$GETVARVAL $SW_DESC FS_VARIANT`
-FSNUM=`echo $FS_TYPE | cut -c1-3`
-
-
-if [ "$FSNUM" == "244" ]; then
-    echo
-    echo "*** Setting temperature shutdown threshold to 88 for S16 ***"
-    echo
-    echo "89000" > $TEMP_FILE_244
-fi
-
-if [ "$FSNUM" == "282" ]; then
-    echo
-    echo "*** Loading lm75 sensor module for 282 ***"
-    modprobe lm75
-    echo
-    echo
-    echo "*** Instantiating lm75 sensor module for 282 ***"
-    echo
-    echo lm75 0x48 > /sys/class/i2c-adapter/i2c-0/new_device
-    echo
-    echo "*** Setting temperature shutdown threshold to 89 degree ***"
-    echo
-    echo "89000" > $TEMP_FILE_282
-fi
-
-
 NVENV=/var/ipaccess/nv_env.sh
 
 . /etc/init.d/functions
@@ -49,9 +17,7 @@ if [ ! -x /etc/init.d/$ENV_OPMODE_SCRIPT ]; then
     exit 1
 fi
 
-if [ -x /opt/ipaccess/bin/sdgpio_util ]; then
-    /opt/ipaccess/bin/sdgpio_util -safestart
-fi
+/opt/ipaccess/bin/sdgpio_util -safestart
 
 echo "Running $ENV_OPMODE_SCRIPT $1"
 /etc/init.d/$ENV_OPMODE_SCRIPT $1

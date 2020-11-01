@@ -57,7 +57,7 @@ update_interface()
 
 update_strongswan()
 {
-  if [ $IFACE_CHANGES != 0 -o $ROUTE_CHANGES != 0 -a -x /usr/local/bin/ipsec ]; then
+  if [ $IFACE_CHANGES != 0 -o $ROUTE_CHANGES != 0 ]; then
     # tell strongSwan the interface and/or default route has changed
     /usr/local/sbin/ipsec update
     # take down the tunnel, this is run twice as the first will put
@@ -72,10 +72,7 @@ update_strongswan()
 
 send_sig_to_sysctrl()
 {
-    MGR_PID=`pidof -s ipa-mgr_app`
-    if [ "$MGR_PID" != "" ]; then
-        kill -SIGUSR1 $MGR_PID
-    fi
+  kill -SIGUSR1 `pidof -s ipa-mgr_app`
 }
 
 dump_to_file()
@@ -183,7 +180,7 @@ update_dns()
   done
   # call helper script to update symlink only if we're not currently
   # using DNS servers assigned by the IPsec GW
-  [ -x $UPDATE_RESOLV_CONF ] && $UPDATE_RESOLV_CONF
+  $UPDATE_RESOLV_CONF
 }
 
 start_bts()

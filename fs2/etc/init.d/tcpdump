@@ -50,10 +50,6 @@ or
   and not (udp port 4500 or udp port 3000 or udp port 3002 or udp port 5000 or udp port 5002 or
            udp port 2152 or udp portrange 1024-1150))"
 fi
-if [ "$ENV_TCPDUMP_ESP_ON" -eq "1" ]; then
-    ENV_TCPDUMP_FILTER="(("$ENV_TCPDUMP_FILTER") or (udp port 4500 or udp port 500))"
-    echo "ESP capture activated"
-fi
 
 start()
 {
@@ -66,6 +62,7 @@ start()
         RETVAL=$?
         if [ $RETVAL -eq 0 ]; then
             echo OK
+            echo $CMD "$ENV_TCPDUMP_FILTER"
         else
             echo FAILURE
         fi

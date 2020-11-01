@@ -6,8 +6,8 @@
 
 PROG="udhcpc"
 APP=/sbin/$PROG
-HEXDUMP=/usr/bin/hexdump
 RETVAL=0
+manuftest=`fw_printenv MANUFTEST 2>&1 | sed 's/MANUFTEST=//'`
 DEFAULT_MTU=1492
 DEFAULT_PMTU_DISCOVERY=0
 scriptPATH=/opt/ipaccess/Utils/scripts
@@ -19,13 +19,6 @@ HWDESWRK=/var/ipaccess/hw_description.dat
 BTSINITSCRIPT=/etc/init.d/nano-bts.sh
 
 iface=`cat /tmp/wanif`
-
-BOOTDEV=
-for p in $(cat /proc/cmdline); do
-     case $p in
-         root=*) BOOTDEV=`echo $p | awk -F= '{print $2}'` ;;
-     esac
-done
 
 setup_vlan()
 {
@@ -89,7 +82,7 @@ init()
     
     ifconfig $iface mtu $default_mtu
 
-    if [ "$BOOTDEV" = "/dev/nfs" ]
+    if [ "$manuftest"+ = "TRUE+" ]
     then
       dhcpEnabled="0"
     else
@@ -116,12 +109,7 @@ init()
       if [ -x $APP ] && [ -f /etc/udhcpc.script ]
       then
         echo "starting dhcp client : $hname-$clientid"
-        #
-        # Newer versions of Busybox do not have the udhcpc -c option,
-        # so we have to use -x instead, which needs the client id in hex
-        #
-        client_id_in_hex=`echo -n $hname-$clientid | $HEXDUMP -ve '1 1 "%02X"'`
-        $APP -S -x 61:$client_id_in_hex -s /etc/udhcpc.script -i $iface
+        $APP -S -c "$hname-$clientid" -s /etc/udhcpc.script -i $iface
       else
         echo "Dhcp client not found no ip address assigned to AP"
       fi
@@ -132,9 +120,9 @@ init()
       ipmask=`$scriptPATH/getVarVal $cnfPATH/ipconfig.dat STATIC_SUBNET_MASK`
       # Manufacturing test s/w is nfs mounted. Bringing the interface down
       # then up disconnects the mount.
-      if [ "$BOOTDEV" = "/dev/nfs" ]
+      if [ "$manuftest"+ = "TRUE+" ] && [ `fw_printenv ipaddr` ]
       then
-        ipaddr=`ifconfig $interface | awk '/inet addr:/ {print $2}' | awk -F: '{print $2}'`
+        ipaddr=`fw_printenv ipaddr | awk -F= '{print $2}'`
       else
         ipaddr=`$scriptPATH/getVarVal $cnfPATH/ipconfig.dat STATIC_IP_ADDR`
         ifconfig $iface down

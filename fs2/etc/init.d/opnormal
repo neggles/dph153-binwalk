@@ -48,60 +48,23 @@ open_firewall_port() {
     $IPTABLES -I INPUT -i $EXTIF -p tcp -m state --state NEW -m multiport --dports $1 -j ACCEPT
 }
 
-radiostart()
-{
-  if [ "`which sdgpio_util`" != "" ]; then
-      # Setup default operational_params.dat config if missing
-      # Load the FPGA Configuration (use -fpgaload2G for a 2G NWL)
-      echo "Loading FPGA Image"
-      sdgpio_util -fpgaload3G
-
-      # sdgpio_util must be run after programming the FPGA
-      sdgpio_util
-  fi
-
-  # start up radio mgr and scpi server
-  if [ -x /opt/ipaccess/radiomgr/radio_mgr.sh ]; then
-    /opt/ipaccess/radiomgr/radio_mgr.sh start
-
-    if [ -f /var/ipaccess/init.rmgr ]; then
-        /opt/ipaccess/radiomgr/scpi_server.sh start
-        sleep 2
-        SCPIClient 127.0.0.1 -c /var/ipaccess/init.rmgr
-        /opt/ipaccess/radiomgr/scpi_server.sh stop
-    fi
-  fi
-}
-
-radiostop()
-{
-  if [ -x /opt/ipaccess/radiomgr/radio_mgr.sh ]; then
-    /opt/ipaccess/radiomgr/radio_mgr.sh stop
-    /opt/ipaccess/radiomgr/scpi_server.sh stop
-  fi
-}
-
 start()
 {
+
   echo
   echo "**** Starting Normal operating mode ****"
   echo
 
-  FSNUM=`echo $FS_TYPE | cut -c1-3`
-  if [ "$FSNUM" == "271" ]; then    
-    echo
-    echo "Starting AGC for sec in order to create shared_memory"
-    echo
-    agc_app &
-    sleep 5
-    killall agc_app
-    sleep 4
-  fi
+  # Setup default operational_params.dat config if missing
+  # Load the FPGA Configuration (use -fpgaload2G for a 2G NWL)
+  echo "Loading FPGA Image"
+  sdgpio_util -fpgaload3G
 
-  if [ "$FSNUM" = "282" ]; then
-    mkdir -p /var/tmp/agc/
-    dd if=/dev/zero of=/var/tmp/agc/shared bs=64 count=1
-  fi
+  # sdgpio_util must be run after programming the FPGA
+  sdgpio_util
+
+  # Make sure nwlIf is running
+  /etc/init.d/nwlIf start
 
   # Set up destination for core files before starting processes
   /opt/ipaccess/bin/waitforpids init
@@ -111,11 +74,7 @@ start()
   # application/process name. In order for the pid file to be created, the application has to
   # either be linked to the crash handler library, or create its own pid file using the name below.
   #
-  if [ "$FSNUM" = "282" ]; then
-    PIDFILENAMES="ipa-mgr_app uplayer ${hnb_process} ipa-rrm 3gctrlapp radiomgr"
-  else
-    PIDFILENAMES="ipa-mgr_app uplayer ${hnb_process} ipa-rrm 3gctrlapp"
-  fi  
+  PIDFILENAMES="ipa-mgr_app uplayer ${hnb_process} ipa-rrm 3gctrlapp"
   PIDFILEPATH="/var/run"
   PIDSINGLEWAIT=20
   PIDTOTALWAIT=80
@@ -126,20 +85,14 @@ start()
     rm -f $PIDFILEPATH/$pidname.pid
   done
 
-  #Calling this script before starting radiomgr as otherwise it breaks radiomgr by cleaning the message queues it is using.
-  # Remove shared resources
-  /opt/ipaccess/Utils/ipcrmm
-
-  radiostart
-
-  # Make sure nwlIf is running
-  /etc/init.d/nwlIf start
-
   # in the case that opnormal start is run twice without an intervening stop,
   # halt the previously started dmi
   dmistop
- 
-  # Starting all applications
+  
+  #Remove shared resources
+  /opt/ipaccess/Utils/ipcrmm
+
+  #Starting all applications
   /opt/ipaccess/Drivers/cpetd_load
 
   if [ ${ENV_START_NSS:-"FALSE"} == "TRUE" ]; then
@@ -255,8 +208,6 @@ appstop()
   
   /etc/init.d/nwlIf stop
 
-  radiostop
-
   # unfortunately,  MgrApp doesnt clean up its child processes when 
   # killed, so if present, ntpd has to be killed. wait for mgr_app to 
   # exit otherwise it will respawn ntpd
@@ -348,8 +299,8 @@ case "$1" in
         stop
         ;;
     appstop)
-        appstop
-        ;;
+    	appstop
+    	;;
     restart|reload)
         restart
         ;;

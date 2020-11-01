@@ -11,7 +11,7 @@ if [ -f $NVENV ]; then
     source $NVENV
 fi
 
-if [ "$ENV_VERBOSE_CONSOLE_ENABLED" == "TRUE" -a "$ENV_SERIAL_CONSOLE_ENABLED" != "FALSE" ]; then
+if [ "$ENV_VERBOSE_CONSOLE_ENABLED" == "TRUE" ]; then
     while [ 1 ]
     do
       # generate issue file - the file itself can't contain the
@@ -25,7 +25,7 @@ if [ "$ENV_VERBOSE_CONSOLE_ENABLED" == "TRUE" -a "$ENV_SERIAL_CONSOLE_ENABLED" !
       else
         ISSUE="-i"
       fi
-      /sbin/getty $ISSUE -L ttyS0 115200 vt100
+      /sbin/getty $ISSUE -L ttyS00 115200 vt100
     done
 else
     while [ 1 ]

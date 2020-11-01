@@ -1,30 +1,28 @@
 Package: rmm
 Priority: required
-Version: 9.0.0bc97
+Version: 8.1.1bc07
 Architecture: arm
 Maintainer: Cisco Systems Inc.
 Source: http://www.cisco.com
 Section: cisco/applications
 Description: Cisco Femto/tr69client RMM program
- 4283c3da1cf3930694c68b1eb06372b7 opt/cisco/reset
+ 2347be73d29ac3c0bb37b326912bf9e2 opt/cisco/reset
  d4addcf844bb309a2c6726a40a582e65 opt/cisco/getacs
- 0f8714f0ea877ae256358905ebdbb860 opt/cisco/rmmwd
- dd80c7b7c6fc040e7632db1fcd8e2d93 opt/cisco/gpstest
- 81b82f869c8bc6847ae4005f97f3a87a opt/cisco/DslmSsp
- 386d9a7e3f79dd715ed5293b24901a64 opt/cisco/Dslg_SysRegistry
- 0e3bd06002e2e51d7befb5990fc83b8b opt/cisco/dslg_def_cfg.xml.gz
+ 5ccd7cfc651d6bc9273ab8b1ac7bb83b opt/cisco/rmmwd
+ c9317157baf1ea400377b13c6dad8868 opt/cisco/gpstest
+ 6ad3a6155d29b743e2556f93fbfdce56 opt/cisco/DslmSsp
+ 4c014583e8cb3c9c5e2a909645176e53 opt/cisco/Dslg_SysRegistry
+ 7013836e3a2d5e15383c14b4a8882e88 opt/cisco/dslg_def_cfg.xml.gz
  4f4a9a6002f5fc284c0877ed3b427ffa opt/cisco/utftpd
  05ef419fb72e7bbf41897c840268685a opt/cisco/DslmRouterSwUpgrade
  52d7a65e647b0e10da4f2eba7fa430e1 opt/cisco/prgflash
  48652b93bb27c8e46c21e539bb96c148 opt/cisco/DslmGPSfwUpgrade
- 09c7cb7248d7ae8f9566fdff7beb22f3 opt/cisco/gps_pollSWVersion
+ ef659616c32e01cadddad5376f7b6e58 opt/cisco/gps_pollSWVersion
  b8f12afaea171e473ac8ce685fa5167c opt/cisco/DslmCurConfigUpdate
  19d4d1cb703a33af84af4a0129b412fd opt/cisco/factoryrestore
  1436cdf7fa72b784d0463989f71570a5 usr/local/bin/hwreset
  141c7c6504cbcf4f84e30ed2a986ad8a opt/cisco/tr069_def_cfg.xml.gz
  b011d6f3b1f4871c724636b943d5e1d8 opt/cisco/shutdown
  02edd2f14fe1f8656983edc1c6a7a920 opt/cisco/syncconfig
- 228f0cb2f7814b8df45ebb804feb4937 opt/cisco/cmhs
+ e15cf1a4fa602a863557081b2c8792fb opt/cisco/cmhs
  7f292d1aac423291b985d027f7a0029e opt/cisco/cmhs_def_cfg.txt
- c8064d486d6bebff75c6c7e27bc11988 opt/cisco/router.tcl
- d6d6422180240486af6ed94d6f20f1a7 opt/cisco/routerdump.tgz

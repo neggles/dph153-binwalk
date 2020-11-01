@@ -46,11 +46,6 @@ log_swalarm()
 }
 
 
-if [ ! -x $SWDL ]; then
-    echo "No swdl_client found, skipping"
-    exit 1
-fi
-
 if [ ! -f $SWDBDAT ] ; then
   $SWDL -recoverdb
 fi

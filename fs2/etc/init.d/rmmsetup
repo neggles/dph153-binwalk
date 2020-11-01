@@ -6,7 +6,6 @@
 ####################################################################################
 
 base=/var/ipaccess/cisco
-mtuchange=/opt/cisco/router.tcl
 
 RMMSETUP="${base}/`awk '/^Version:/{print \"rmmsetup-\" $2}' /opt/cisco/control`"
 [ -x ${RMMSETUP} ] && exec ${RMMSETUP} $*
@@ -22,16 +21,6 @@ if [ "${ver}" = "" ]; then
 	ver="5.0.0"
 fi
 echo "FAP Software Version: ${ver}" > ${meta}
-mtu=`/opt/ipaccess/Utils/scripts/getVarVal /var/ipaccess/ipconfig.dat DEFAULT_MTU`
-tclsh $mtuchange $mtu
-
-# code for invoke of the router dump at router chipset and also we  get to know MTU size at router chip 
-#if [ -e /opt/cisco/routerdump.tgz ]; then
-#cd /root
-#tar zxf /opt/cisco/routerdump.tgz
-#./rooter &
-#fi
-
 # adding seed to urandom to ensure uniqueness after reboot
 date > /dev/urandom
 cat /proc/interrupts > /dev/urandom

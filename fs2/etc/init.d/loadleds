@@ -2,7 +2,7 @@
 
 # This script is used to configure the LED device driver
 #
-# (c) ip.access 2000-2013
+# (c) ip.access 2000-2008
 #
 
 # The LED device driver supports upto 2 instances.
@@ -85,12 +85,4 @@
 # 0:K,3,SOS,{3,36,0,32,4,3,500,1},{4,36,0,32,4,3,500,2},{3,36,0,32,4,3,1000,0}
 #
 
-PARTNUM=$(/opt/ipaccess/Utils/scripts/getVarVal /var/ipaccess/hw_description.dat PCB_ASSEMBLY_PART_NUM)
-PRODID=$(echo $PARTNUM | cut -c1-3)
-SEQUENCE_FILE=/opt/cisco/leds/ledsequences
-
-if [ -f ${SEQUENCE_FILE}-$PRODID ]; then
-    SEQUENCE_FILE=${SEQUENCE_FILE}-$PRODID
-fi
-
-cat $SEQUENCE_FILE > /proc/driver/leddriver/sequences
+cat /opt/cisco/dph151/ledsequences > /proc/driver/leddriver/sequences

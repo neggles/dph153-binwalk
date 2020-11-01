@@ -24,7 +24,6 @@ fi
 PATH=$PATH:/usr/local/bin:/opt/ipaccess/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/sbin
 export PATH
 
-#LD_LIBRARY_PATH=/lib:/usr/lib:/opt/ipaccess/lib:/var/ipaccess
 LD_LIBRARY_PATH=/lib:/usr/lib:/opt/ipaccess/lib
 export LD_LIBRARY_PATH
 
@@ -62,7 +61,6 @@ if [ "$FS" == "" ]; then
 fi
 
 export FS_VARIANT=$FS
-export FS_LETTER=${FS:3:1}
 
 NVENV=/var/ipaccess/nv_env.sh
 
@@ -80,20 +78,10 @@ IS_NANO=0
 export IS_NANO
 
 # set environment variable to indicate in commissioning mode
-HWDESC=/var/ipaccess/hw_description.dat
-WEBIF_PERMANENT_DISABLED=UNKNOWN 
-
-if [ -f $HWDESC ]; then
-    WEBIF_PERMANENT_DISABLED=`$GETVARVAL $HWDESC WEBIF_CTRL_PERMANENT_DISABLED_CMD`
-fi
-if [ "$WEBIF_PERMANENT_DISABLED" == "" ]; then
-    WEBIF_PERMANENT_DISABLED=0
-fi  
 COMMISSIONING_MODE=0
 if [ $IS_NANO = 1 ] &&
    [ ${ENV_COMMISSIONING_INTERFACE_ENABLED:-"TRUE"} = "TRUE" ] &&
-   [ -d /etc/rc1.d ] &&
-   [ $WEBIF_PERMANENT_DISABLED != 1 ]
+   [ -d /etc/rc1.d ]
 then
     COMMISSIONING_MODE=1
 fi
@@ -117,7 +105,4 @@ else
     export WANIF
     echo $WANIF > /tmp/wanif
 fi
-
-export PCB_ASSEMBLY_PART_NUM=$($GETVARVAL $HWDESC PCB_ASSEMBLY_PART_NUM)
-export HW_PRODID=$(echo $PCB_ASSEMBLY_PART_NUM | cut -c1-3)
 

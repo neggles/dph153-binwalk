@@ -12,41 +12,6 @@ SETNVENV=/opt/ipaccess/bin/setnv_env.sh
 # Mount the default file systems mentioned in /etc/fstab.
 mount -a
 
-# setup /dev as a tmpfs and populate using mdev
-if ! mountpoint -q /dev; then
-    mount -t tmpfs -o size=64k,mode=0755 tmpfs /dev
-fi
-# Enable automated reboot on oops and oom
-# Depends on kernel.panic=1 which is set through kernel command line "panic=1"
-sysctl -w kernel.panic_on_oops=1
-sysctl -w vm.panic_on_oom=1
-
-if ! mountpoint -q /dev/pts; then
-    mkdir -p /dev/pts
-    mount -t devpts devpts /dev/pts
-fi
-
-echo /sbin/mdev > /proc/sys/kernel/hotplug
-mdev -s
-
-# Create ttyS00 and ttyS01 sym links for backward compatibility with older platforms
-ln -sf /dev/ttyS0 /dev/ttyS00
-ln -sf /dev/ttyS1 /dev/ttyS01
-
-if [ -x /opt/ipaccess/bin/setup_mtd_links ]; then
-    /opt/ipaccess/bin/setup_mtd_links
-fi
-
-# workaround, it seems hotplug isn't working too well
-for d in 0 1; do
-    LEDF=/dev/leddriver$d
-    if [ ! -c $LEDF ]; then
-        rm -f $LEDF
-        mknod $LEDF c 241 $d
-    fi
-done
-ln -sf leddriver0 /dev/leddriver
-
 # Source the PATH from /etc/profile
 source /etc/profile
 
@@ -89,7 +54,6 @@ if [ "$FS_LETTER" = "A" ] ||
    [ "$FS_LETTER" = "I" ] ||
    [ "$FS_LETTER" = "W" ] ||
    [ "$FS_LETTER" = "X" ] ||
-   [ "$FS_LETTER" = "Y" ] ||
    [ "$FS_LETTER" = "Z" ]; then
    DEFAULT_UNHARDENED="TRUE"
 fi
@@ -109,29 +73,17 @@ if [ "$ENV_FIREWALL_DISABLED" = "" ]; then
     ENV_UPDATED=1
 fi
 
-# this is here in case something went wrong creating/modifying nv_env
-export ENV_VERBOSE_CONSOLE_ENABLED=$DEFAULT_UNHARDENED
-export ENV_FIREWALL_DISABLED=$DEFAULT_UNHARDENED
-
-# allow additional nv_env variable to override default/configured state
-# of serial console (but not ssh console)
-SERIAL_CONSOLE_ENABLED=$ENV_VERBOSE_CONSOLE_ENABLED
-if [ "$ENV_SERIAL_CONSOLE_ENABLED" = "FALSE" -a "$ENV_VERBOSE_CONSOLE_ENABLED" = "TRUE" ]; then
-    echo "Serial console is disabled"
-    SERIAL_CONSOLE_ENABLED=$ENV_SERIAL_CONSOLE_ENABLED
-fi
-
 if [ $ENV_UPDATED = 1 ]; then
     source $NVENV
 fi
 
 # U-Boot hardening related variables are derived from the nv_env
 # variables - need the check these each boot to ensure consistency.
-UBOOT_SILENT=`fw_printenv -n silent 2>/dev/null`
-UBOOT_BOOTDELAY=`fw_printenv -n bootdelay 2>/dev/null`
-UBOOT_CONSOLEDEV=`fw_printenv -n consoledev 2>/dev/null`
+UBOOT_SILENT=`fw_printenv -n silent`
+UBOOT_BOOTDELAY=`fw_printenv -n bootdelay`
+UBOOT_CONSOLEDEV=`fw_printenv -n consoledev`
 
-if [ "$SERIAL_CONSOLE_ENABLED" = "TRUE" ]; then
+if [ "$ENV_VERBOSE_CONSOLE_ENABLED" = "TRUE" ]; then
     UBOOT_EXPECTED_SILENT=""
     UBOOT_EXPECTED_BOOTDELAY="5"
     UBOOT_EXPECTED_CONSOLEDEV="ttyS0"

@@ -16,15 +16,8 @@ for p in $(cat /proc/cmdline); do
 done
 
 BOOTBANK=1
-STANDBYBANK=2
 if [ "$BOOTDEV" = /dev/mtdblock6 ]; then
     BOOTBANK=2
-    STANDBYBANK=1
-fi
-
-if [ "$BOOTDEV" = ubi1:rootfs ]; then
-    BOOTBANK=2
-    STANDBYBANK=1
 fi
 
 # run U-Boot relocation script if present
@@ -62,32 +55,20 @@ fi
 
 # Path to configuration files for this bank of Flash
 CONFIG_FILE_PATH=/var/ipaccess/config_bank_$BOOTBANK
+
 # Create the directory for configuration files if it doesn't already exist
 if [ ! -d $CONFIG_FILE_PATH ]; then
     rm -rf $CONFIG_FILE_PATH
     mkdir $CONFIG_FILE_PATH
 fi
+
+
 # Create symlink to the current bank's configuration file directory
 if [ "`readlink /var/ipaccess/config`" != "$CONFIG_FILE_PATH" ]; then
     # link is wrong or missing, fix it
     rm -rf /var/ipaccess/config
     ln -s $CONFIG_FILE_PATH /var/ipaccess/config
 fi
-
-# path to config files for standby bank
-STANDBY_CONFIG_FILE_PATH=/var/ipaccess/config_bank_$STANDBYBANK
-# Create the directory for standby configuration files if it doesn't already exist
-if [ ! -d $STANDBY_CONFIG_FILE_PATH ]; then
-    rm -rf $STANDBY_CONFIG_FILE_PATH
-    mkdir $STANDBY_CONFIG_FILE_PATH
-fi
-# Create symlink to the standby bank's configuration file directory
-if [ "`readlink /var/ipaccess/config_standby`" != "$STANDBY_CONFIG_FILE_PATH" ]; then
-    # link is wrong or missing, fix it
-    rm -rf /var/ipaccess/config_standby
-    ln -s $STANDBY_CONFIG_FILE_PATH /var/ipaccess/config_standby
-fi
-
 
 BANK=`fw_printenv -n bank`
 

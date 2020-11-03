@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mc:measCollecFile xmlns:mc="http://www.3gpp.org/ftp/specs/archive/32_series/32.435#measCollec" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.3gpp.org/ftp/specs/archive/32_series/32.435#measCollec pm_report.xsd">
+ <mc:fileHeader fileFormatVersion="32.435 V7.0" vendorName="ip.access" dnPrefix="">
+        <mc:fileSender localDn="AP#0" elementType="3G AP"/>
+        <mc:measCollec beginTime="2019-10-08T05:00:00Z"/>
+      </mc:fileHeader>
+ <mc:measData>
+    <mc:managedElement localDn="AP#0" userLabel="34BDFA-0019601309" swVersion="Kernel: 224_002 240.0, Filesys: 224F004 579.11.144C900_97"/>
+        <mc:measInfo measInfoId="mfSoipUsagePackage_000">
+   <mc:job jobId="3967"/>
+           <mc:granPeriod duration="PT3600S" endTime="2019-10-08T06:00:00Z"/>
+              <mc:repPeriod duration="PT86400S"/>
+              <mc:measValue measObjLdn="">
+            </mc:measValue>
+            </mc:measInfo>
+        <mc:measInfo measInfoId="mfAccessControlPackage_000">
+   <mc:job jobId="3967"/>
+           <mc:granPeriod duration="PT3600S" endTime="2019-10-08T06:00:00Z"/>
+              <mc:repPeriod duration="PT86400S"/>
+             <mc:measType p="1">accessControlAttempts</mc:measType>
+             <mc:measType p="2">accessControlSuccess</mc:measType>
+              <mc:measValue measObjLdn="">
+             <mc:r p="1">5</mc:r>
+             <mc:r p="2">5</mc:r>
+            </mc:measValue>
+            </mc:measInfo>
+        <mc:measInfo measInfoId="mfApHandinPackage_000">
+   <mc:job jobId="3967"/>
+           <mc:granPeriod duration="PT3600S" endTime="2019-10-08T06:00:00Z"/>
+              <mc:repPeriod duration="PT86400S"/>
+              <mc:measValue measObjLdn="">
+            </mc:measValue>
+            </mc:measInfo>
+        <mc:measInfo measInfoId="mfApHandoutPackage_000">
+   <mc:job jobId="3967"/>
+           <mc:granPeriod duration="PT3600S" endTime="2019-10-08T06:00:00Z"/>
+              <mc:repPeriod duration="PT86400S"/>
+              <mc:measValue measObjLdn="">
+            </mc:measValue>
+            </mc:measInfo>
+        <mc:measInfo measInfoId="mfApManagementPackage_000">
+   <mc:job jobId="3967"/>
+           <mc:granPeriod duration="PT3600S" endTime="2019-10-08T06:00:00Z"/>
+              <mc:repPeriod duration="PT86400S"/>
+             <mc:measType p="3">apAlarmsRaised.1014.1230.4</mc:measType>
+              <mc:measValue measObjLdn="">
+             <mc:r p="3">2</mc:r>
+            </mc:measValue>
+            </mc:measInfo>
+        <mc:measInfo measInfoId="mfApPagingPackage_000">
+   <mc:job jobId="3967"/>
+           <mc:granPeriod duration="PT3600S" endTime="2019-10-08T06:00:00Z"/>
+              <mc:repPeriod duration="PT86400S"/>
+              <mc:measValue measObjLdn="">
+            </mc:measValue>
+            </mc:measInfo>
+        <mc:measInfo measInfoId="mfApUserPlanePackage_000">
+   <mc:job jobId="3967"/>
+           <mc:granPeriod duration="PT3600S" endTime="2019-10-08T06:00:00Z"/>
+              <mc:repPeriod duration="PT86400S"/>
+             <mc:measType p="4">downlinkBandwidthByRabType_001.15</mc:measType>
+             <mc:measType p="5">downlinkPacketsByRabType_001.15</mc:measType>
+             <mc:measType p="6">averageNumHarqRetransmissions.0</mc:measType>
+             <mc:measType p="7">averageThroughputOnEdch</mc:measType>
+             <mc:measType p="8">callsByRabType_002.15</mc:measType>
+             <mc:measType p="9">fachSignallingBitRate.13</mc:measType>
+             <mc:measType p="10">rachSignallingBitRate.13</mc:measType>
+             <mc:measType p="11">uplinkBandwidthByRabType_002.15</mc:measType>
+             <mc:measType p="12">uplinkPacketsByRabType_002.15</mc:measType>
+             <mc:measType p="13">maxCalls.2</mc:measType>
+             <mc:measType p="14">meanCalls.2</mc:measType>
+              <mc:measValue measObjLdn="">
+             <mc:r p="4">2616</mc:r>
+             <mc:r p="5">10</mc:r>
+             <mc:r p="6">161</mc:r>
+             <mc:r p="7">35.323099</mc:r>
+             <mc:r p="8">4</mc:r>
+             <mc:r p="9">360</mc:r>
+             <mc:r p="10">360</mc:r>
+             <mc:r p="11">5224</mc:r>
+             <mc:r p="12">14</mc:r>
+             <mc:r p="13">1</mc:r>
+             <mc:r p="14">0.043333</mc:r>
+            </mc:measValue>
+            </mc:measInfo>
+        <mc:measInfo measInfoId="mfNtpPerformancePackage_000">
+   <mc:job jobId="3967"/>
+           <mc:granPeriod duration="PT3600S" endTime="2019-10-08T06:00:00Z"/>
+              <mc:repPeriod duration="PT86400S"/>
+             <mc:measType p="15">ntpCurrentServerState.12_230_208_48.1</mc:measType>
+             <mc:measType p="16">ntpCurrentServerState.12_230_208_48.2</mc:measType>
+             <mc:measType p="17">ntpCurrentServerState.12_230_208_48.4</mc:measType>
+             <mc:measType p="18">ntpCurrentServerState.12_230_209_133.1</mc:measType>
+             <mc:measType p="19">ntpCurrentServerState.12_230_209_133.4</mc:measType>
+             <mc:measType p="20">ntpCurrentServerState.12_230_208_133.1</mc:measType>
+             <mc:measType p="21">ntpCurrentServerState.12_230_208_133.4</mc:measType>
+             <mc:measType p="22">ntpCurrentServerState.12_230_209_5.1</mc:measType>
+             <mc:measType p="23">ntpCurrentServerState.12_230_209_5.4</mc:measType>
+             <mc:measType p="24">ntpMaxDelay</mc:measType>
+             <mc:measType p="25">ntpMaxJitter</mc:measType>
+             <mc:measType p="26">ntpMeanDelay</mc:measType>
+             <mc:measType p="27">ntpMeanJitter</mc:measType>
+             <mc:measType p="28">ntpServerReselections</mc:measType>
+              <mc:measValue measObjLdn="">
+             <mc:r p="15">34841</mc:r>
+             <mc:r p="16">34841</mc:r>
+             <mc:r p="17">1</mc:r>
+             <mc:r p="18">963</mc:r>
+             <mc:r p="19">2</mc:r>
+             <mc:r p="20">33867</mc:r>
+             <mc:r p="21">3</mc:r>
+             <mc:r p="22">34830</mc:r>
+             <mc:r p="23">4</mc:r>
+             <mc:r p="24">32517</mc:r>
+             <mc:r p="25">198</mc:r>
+             <mc:r p="26">32188</mc:r>
+             <mc:r p="27">63</mc:r>
+             <mc:r p="28">5</mc:r>
+            </mc:measValue>
+            </mc:measInfo>
+        <mc:measInfo measInfoId="mfRadioLinkPackage_000">
+   <mc:job jobId="3967"/>
+           <mc:granPeriod duration="PT3600S" endTime="2019-10-08T06:00:00Z"/>
+              <mc:repPeriod duration="PT86400S"/>
+             <mc:measType p="29">radioLinkDeletionAttempts</mc:measType>
+             <mc:measType p="30">radioLinkDeletionSuccess</mc:measType>
+             <mc:measType p="31">radioLinkSetupAttempts</mc:measType>
+             <mc:measType p="32">radioLinkSetupSuccess</mc:measType>
+              <mc:measValue measObjLdn="">
+             <mc:r p="29">4</mc:r>
+             <mc:r p="30">4</mc:r>
+             <mc:r p="31">4</mc:r>
+             <mc:r p="32">4</mc:r>
+            </mc:measValue>
+            </mc:measInfo>
+        <mc:measInfo measInfoId="mfRfPackage_000">
+   <mc:job jobId="3967"/>
+           <mc:granPeriod duration="PT3600S" endTime="2019-10-08T06:00:00Z"/>
+              <mc:repPeriod duration="PT86400S"/>
+             <mc:measType p="33">rfDownlinkCodePower_002.95.1</mc:measType>
+             <mc:measType p="34">rfCpichEcOverNo.5</mc:measType>
+             <mc:measType p="35">rfCpichRscp.1</mc:measType>
+             <mc:measType p="36">rfCpichRscp.2</mc:measType>
+             <mc:measType p="37">rfDownlinkCarrierPower.2</mc:measType>
+             <mc:measType p="38">rfDownlinkCarrierPower.3</mc:measType>
+             <mc:measType p="39">rfDownlinkCarrierPowerNotHsdpa.2</mc:measType>
+             <mc:measType p="40">rfMeanRssi</mc:measType>
+             <mc:measType p="41">rfMeanWidebandPower</mc:measType>
+              <mc:measValue measObjLdn="">
+             <mc:r p="33">29</mc:r>
+             <mc:r p="34">25</mc:r>
+             <mc:r p="35">1</mc:r>
+             <mc:r p="36">24</mc:r>
+             <mc:r p="37">3599</mc:r>
+             <mc:r p="38">1</mc:r>
+             <mc:r p="39">3600</mc:r>
+             <mc:r p="40">-94.321579</mc:r>
+             <mc:r p="41">-92.9462

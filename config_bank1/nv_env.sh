@@ -1,0 +1,7 @@
+export ENV_VERBOSE_CONSOLE_ENABLED="FALSE"
+export ENV_FIREWALL_DISABLED="FALSE"
+export ENV_CRL_BASE_SERVER="https://femtocell.wireless.att.com:443/file/"
+export TZ=""
+export DSCP_ACS="10"
+export ENV_BASICOAM_DISABLED="TRUE"
+export ENV_CRASH_REPORT_URL=""

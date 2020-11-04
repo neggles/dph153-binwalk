@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cd:configDataFile xmlns:cd="http://www.3gpp.org/ftp/specs/archive/32_series/32.584#configData" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<cd:fileHeader fileFormatVersion="32.584 V11.0" vendorName="ip.access" senderName="105F49-0014229335"/>
+   <cd:configData> 
+      <cd:managedElement localDn = "105F49-0014229335" swVersion="Kernel: 224_002 240.0, Filesys: 224F004 579.11.144C900_97" />
+        <cd:Device>
+            <cd:Services>
+                <cd:FAPService>
+                    <cd:REM>
+                        <cd:UMTS>
+                            <cd:WCDMA>
+                                <cd:LastScanTime>2018-10-27T15:31:54Z</cd:LastScanTime>
+                                 <cd:Cell>
+                                           <cd:RF>
+                                               <cd:UARFCNDL>612</cd:UARFCNDL>
+                                               <cd:CPICHRSCP>-96</cd:CPICHRSCP>
+                                               <cd:CPICHEcNo>-11</cd:CPICHEcNo>
+                                               <cd:RSSI>25</cd:RSSI>
+                                               <cd:PrimaryScramblingCode>240</cd:PrimaryScramblingCode>
+                                            </cd:RF>
+                                            <cd:BCCH>
+                                                <cd:PLMNID>310410</cd:PLMNID>
+                                                <cd:LAC>12973</cd:LAC>
+                                                <cd:RAC>233</cd:RAC>
+                                                <cd:CellID>219093866</cd:CellID>
+                                                <cd:PCPICHTxPower>31</cd:PCPICHTxPower>
+                                                <cd:DetectionScore>2</cd:DetectionScore>
+                                              </cd:BCCH>
+                                    </cd:Cell>
+
+                                 <cd:Cell>
+                                           <cd:RF>
+                                               <cd:UARFCNDL>612</cd:UARFCNDL>
+                                               <cd:CPICHRSCP>-102</cd:CPICHRSCP>
+                                               <cd:CPICHEcNo>-15</cd:CPICHEcNo>
+                                               <cd:RSSI>23</cd:RSSI>
+                                               <cd:PrimaryScramblingCode>400</cd:PrimaryScramblingCode>
+                                            </cd:RF>
+                                            <cd:BCCH>
+                                                <cd:PLMNID>310410</cd:PLMNID>
+                                                <cd:LAC>12971</cd:LAC>
+                                                <cd:RAC>231</cd:RAC>
+                                                <cd:CellID>218960223</cd:CellID>
+                                                <cd:PCPICHTxPower>31</cd:PCPICHTxPower>
+                                                <cd:DetectionScore>2</cd:DetectionScore>
+                                              </cd:BCCH>
+                                    </cd:Cell>
+
+                           </cd:WCDMA>
+                            <cd:GSM>
+                                <cd:LastScanTime>2018-10-27T15:31:54Z</cd:LastScanTime>
+                                 <cd:Cell>
+                                       <cd:BandIndicator>BAND_NAME_PCS_1900</cd:BandIndicator>
+                                       <cd:ARFCN>514</cd:ARFCN>
+                                       <cd:BSIC>13</cd:BSIC>
+                                       <cd:PLMNID>310260</cd:PLMNID>
+                                       <cd:LAC>7401</cd:LAC>
+                                       <cd:RAC>0</cd:RAC>
+                                       <cd:CI>20183</cd:CI>
+                                       <cd:RSSI>31</cd:RSSI>
+                                       <cd:DetectionScore>2</cd:DetectionScore>
+                                  </cd:Cell>
+
+                                 <cd:Cell>
+                                       <cd:BandIndicator>BAND_NAME_PCS_1900</cd:BandIndicator>
+                                       <cd:ARFCN>560</cd:ARFCN>
+                                       <cd:BSIC>22</cd:BSIC>
+                                       <cd:PLMNID>310260</cd:PLMNID>
+                                       <cd:LAC>7401</cd:LAC>
+                                       <cd:RAC>0</cd:RAC>
+                                       <cd:CI>21081</cd:CI>
+                                       <cd:RSSI>33</cd:RSSI>
+                                       <cd:DetectionScore>2</cd:DetectionScore>
+                                  </cd:Cell>
+
+                           </cd:GSM>
+                        </cd:UMTS>
+                    </cd:REM>
+
+                    <cd:CellConfig>
+                       <cd:UMTS>
+                         <cd:CN>
+                            <cd:PLMNID>310410</cd:PLMNID>
+                            <cd:LACInUse>64012</cd:LACInUse>
+                            <cd:RACInUse>60</cd:RACInUse>
+                         </cd:CN>
+                         <cd:RAN>
+                            <cd:CellID>255886467</cd:CellID>
+                            <cd:RF>
+                                <cd:UARFCNDLInUse>9863</cd:UARFCNDLInUse>
+                                <cd:UARFCNULInUse>9463</cd:UARFCNULInUse>
+                                <cd:PrimaryScramblingCodeInUse>506</cd:PrimaryScramblingCodeInUse>
+                                <cd:PCPICHPowerInUse>0</cd:PCPICHPowerInUse>
+                            </cd:RF>
+                        </cd:RAN>
+                      </cd:UMTS>
+                    </cd:CellConfig>
+                </cd:FAPService>
+            </cd:Services>
+        </cd:Device>
+   </cd:configData>
+<cd:fileFooter dateTime="2018-10-27T15:31:54Z"/>
+</cd:configDataFile>

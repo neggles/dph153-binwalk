@@ -1,0 +1,7 @@
+#!/bin/bash
+#
+# wrapper to print bank number, used so that we can have a common
+# command regardless of whether the bank variable is stored in
+# the U-Boot environment or not
+#
+fw_printenv -n bank

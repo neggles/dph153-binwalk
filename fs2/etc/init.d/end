@@ -1,0 +1,71 @@
+#!/bin/bash
+#
+
+PROG="end"
+APP=/opt/ipaccess/bin/bootcount
+RETVAL=0
+
+WARMSTART=/opt/ipaccess/bin/warmstart
+WSVAL_COLD=0
+WSVAL_WARM=1
+
+start() {
+    echo "Starting $PROG: "
+
+    # print out initial value
+    echo -n "Bootcount initial value: "
+    $APP
+
+    # now set it to 0 to indicate we got to the end of the startup sequence.
+    # This is not a brilliant method as it could be that the applications 
+    # crash very shortly afterwards. It would be better to set this on some
+    # condition that is more difficult to satisfy (e.g. apps stay up for x 
+    # minutes, or during a controlled shutdown perhaps)
+    $APP 0
+
+    # does anything actually use the bootstatus?!
+    echo 100 > /tmp/bootstatus 
+
+    # a value of 1 or 2 indicates a warm start, anything else
+    # is a cold start
+    WSVAL=$($WARMSTART)
+    case "$WSVAL" in
+        1|2)
+            echo "Warm start ($WSVAL)"
+            ;;
+        0|*)
+            echo "Cold start ($WSVAL)"
+            $WARMSTART 1
+            ;;
+    esac
+}
+
+stop() {
+    echo -n "Stopping $PROG: "
+    echo 0 > /tmp/bootstatus
+    echo "OK"
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

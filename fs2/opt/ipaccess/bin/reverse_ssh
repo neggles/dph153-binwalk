@@ -1,0 +1,83 @@
+#!/bin/bash
+#
+# reverse_ssh - helper script to initiate a reverse SSH session
+# 
+# Before starting a new session this script first checks that no
+# matching session is already running
+#
+ME=`basename $0`
+
+ENV_VARIABLE_SOURCE='/var/ipaccess/nv_env.sh'
+if [ -e $ENV_VARIABLE_SOURCE ]; then
+    source $ENV_VARIABLE_SOURCE
+fi
+
+# Default the location of the ssh key file
+if [ "$ENV_SSH_KEY_FILE" == "" ]; then
+    ENV_SSH_KEY_FILE=/var/ipaccess/id_3gap
+fi
+# default server port and user if missing
+if [ "$ENV_DEFAULT_SSH_SERVER_PORT" == "" ]; then
+    ENV_DEFAULT_SSH_SERVER_PORT=22
+fi
+if [ "$ENV_DEFAULT_SSH_SERVER_USER" == "" ]; then
+    ENV_DEFAULT_SSH_SERVER_USER=remote_ap
+fi
+
+if [ $# != 2 ]; then
+    echo "USAGE: $ME [serveruser@]<serveraddr>[:serverport] <gatewayport>"
+    exit 1
+fi
+
+# ensure we have a valid key
+if [ -f $ENV_SSH_KEY_FILE ]; then
+    dropbearkey -f $ENV_SSH_KEY_FILE -y 1> /dev/null
+    if [ $? != 0 ]; then
+        echo "No ssh key available; you need to run get_reverse_ssh_key first"
+        exit 2
+    fi
+fi
+
+ADDR=$1
+if [ "`echo $1 | grep @`" != "" ]; then
+    SERVER_USER=`echo $1 | awk -F'@' '{print $1}'`
+    ADDR=`echo $1 | awk -F'@' '{print $2}'`
+fi
+
+if [ "$SERVER_USER" == "" ]; then
+    SERVER_USER=$ENV_DEFAULT_SSH_SERVER_USER
+fi
+
+SERVER_ADDR=`echo $ADDR | awk -F':' '{print $1}'`
+SERVER_PORT=`echo $ADDR | awk -F':' '{print $2}'`
+if [ "$SERVER_PORT" == "" ]; then
+    SERVER_PORT=$ENV_DEFAULT_SSH_SERVER_PORT
+fi
+
+if [ $SERVER_PORT -lt 0 -o $SERVER_PORT -gt 65535 ]; then
+    echo "Invalid ssh port specified ($SERVER_PORT)"
+    exit 3
+fi
+
+if [ $2 -lt 0 -o $2 -gt 65535 ]; then
+    echo "Invalid gateway port ($2)"
+    exit 4
+else
+    GATEWAY_PORT=$2
+fi
+
+# build up the command string
+CMD="ssh -i $ENV_SSH_KEY_FILE -p $SERVER_PORT -yy -K 2 -N -f -R $GATEWAY_PORT:localhost:22 $SERVER_USER@$SERVER_ADDR"
+# check that this isn't running already
+RUNNING_PID=`pgrep -f "$CMD"`
+
+if [ "$RUNNING_PID" == "" ]; then
+    # not running, start it
+    echo "Starting Reverse SSH session;"
+    echo $CMD
+    $CMD
+    exit $?
+else
+    echo "Reverse SSH session already running with PID $RUNNING_PID"
+fi
+

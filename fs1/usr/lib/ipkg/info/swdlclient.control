@@ -1,0 +1,10 @@
+Package: swdlclient
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 579.11.142
+Description: ip.Access 3G Access Point software component
+Source: ip.access
+Depends: 

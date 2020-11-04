@@ -1,0 +1,125 @@
+#!/bin/bash
+###########################################################################
+#
+# relocate_uboot - script to perform Flash layout upgrade required
+#                  for the introduction of the Secure Boot feature
+#
+###########################################################################
+#
+# This script needs to detect when a new version of U-Boot is running
+# in the old location at start of Flash and fix up the Flash accordingly.
+# It will also fix up the mtdparts U-Boot environment variable but 
+# this must be done independently as if the BDI is used to Flash a new
+# U-Boot in the old location and default the U-Boot env, we'd come up
+# with a new mtdparts.
+#
+# Common case is that we've just done a swdl from an old version which has
+# written new U-Boot to old location, so we need to copy U-Boot to new 
+# location and write dummy fsb into start of Flash then fix up mtdparts.
+#
+###########################################################################
+source /etc/init.d/functions
+
+# duplicate output to stdout and /dev/console explicitly so we see it on
+# serial port during boot
+dbgprint()
+{
+	echo "$1"
+	echo      > /dev/console
+	echo "$1" > /dev/console
+}
+
+# only run on 224, 226 or 234 variants
+FS=`/opt/ipaccess/Utils/scripts/getVarVal /etc/sw_description.dat FS_VARIANT`
+FSN=${FS:0:3}
+if [ "$FSN" != "224" ] && [ "$FSN" != "226" ] && [ "$FSN" != "234" ]; then
+	exit 0
+fi
+
+NEW_MTDPARTS="\
+physmap-flash.0:384K@0x03e00000(uBoot),256K@0x40000(env),2M(kernel1),2M(kernel2),3584K(config),\
+27M(FS1),27M(FS2),256K@0(fsboot),128K@0x03e60000(oem_divert2),256K(oem_data1),256K(oem_data2),\
+256K(oem_lib1),256K(oem_lib2),256K(resv),256K(ipa_calib)"
+
+RUNNING_NEW_MTDPARTS=`grep -c fsboot /proc/mtd`
+UBOOT_HAS_NEW_MTDPARTS=`fw_printenv -n mtdparts | grep -c fsboot`
+
+if [ "$RUNNING_NEW_MTDPARTS" = "1" ]; then
+	# Flash layout already updated
+	NEW_UBOOT_DEVICE=/dev/mtd0
+	OLD_UBOOT_DEVICE=/dev/mtd7
+else
+	# Flash layout needs updating
+	NEW_UBOOT_DEVICE=/dev/mtd7
+	OLD_UBOOT_DEVICE=/dev/mtd0
+fi
+
+# now check if the new U-Boot location contains the new U-Boot..
+NEW_UBOOT_IN_NEW_LOCATION=`strings $NEW_UBOOT_DEVICE | grep -c $NEW_MTDPARTS`
+
+if [ "$NEW_UBOOT_IN_NEW_LOCATION" != "1" ]; then
+	# check that the new U-Boot is in the old location
+	NEW_UBOOT_IN_OLD_LOCATION=`strings $OLD_UBOOT_DEVICE | grep -c $NEW_MTDPARTS`
+	if [ "$NEW_UBOOT_IN_OLD_LOCATION" != "1" ]; then
+		# something has gone wrong.. best to report it and do nothing
+		dbgprint "*************************************************************"
+		dpgprint "*** ERROR - can't find correct U-Boot in either location! ***"
+		dbgprint "*************************************************************"
+		exit 1
+	fi
+	# ok - do the relocation
+	dbgprint "**********************************************************"
+	dbgprint "***     relocating bootloader - DO NOT POWER DOWN!     ***"
+	dbgprint "**********************************************************"
+	# Erase new U-Boot location
+	flash_eraseall $NEW_UBOOT_DEVICE
+	# copy U-Boot to new location (but not last 64k containing meta+sigs)
+	dd if=$OLD_UBOOT_DEVICE of=$NEW_UBOOT_DEVICE bs=1024 count=192
+	# now write meta+sigs - this is a little complicated as if we're not
+	# currently running with the new partition map we actually need to write
+	# it into the next mtd device
+	if [ "$RUNNING_NEW_MTDPARTS" = "1" ]; then
+		dd if=$OLD_UBOOT_DEVICE of=$NEW_UBOOT_DEVICE bs=1024 count=64 skip=192 seek=320
+	else
+		flash_eraseall /dev/mtd8
+		dd if=$OLD_UBOOT_DEVICE of=/dev/mtd8 bs=1024 count=64 skip=192 seek=64
+	fi
+	REBOOT_NEEDED=1
+fi
+
+# Need to write dummy bootloader if we've just copied U-Boot. If we didn't just copy
+# U-Boot then need to check that old U-Boot location has FSB (i.e. check it doesn't
+# have U-Boot), this will prevent us getting stuck in a state where mtd0 points to the
+# new location but the old location contains U-Boot rather than the FSB.
+if [ "$NEW_UBOOT_IN_NEW_LOCATION" != "1" -o  "`strings $OLD_UBOOT_DEVICE | grep -c U-Boot`" != "0" ]; then
+	# Erase old U-Boot location
+	flash_eraseall $OLD_UBOOT_DEVICE
+	# Write dummy first stage bootloader - this is just doing; ldr pc,=0x03E00000
+	for d in 3e f6 a0 e3 fe ff ff ea; do printf "\\x$d"; done | dd of=$OLD_UBOOT_DEVICE
+	REBOOT_NEEDED=1
+fi
+
+if [ "$UBOOT_HAS_NEW_MTDPARTS" != "1" ]; then
+	# fix up the mtdparts
+	dbgprint "**********************************************************"
+	dbgprint "*** updating partition map for new bootloader location ***"
+	dbgprint "**********************************************************"
+	fw_setenv mtdparts $NEW_MTDPARTS
+	REBOOT_NEEDED=1
+fi
+
+if [ "$REBOOT_NEEDED" = 1 ]; then
+	dbgprint "**********************************************************"
+	dbgprint "****    rebooting to pick up bootloader relocation     ***"
+	dbgprint "**********************************************************"
+	log_entry "U-Boot relocating, reboot required"
+	sleep 3
+	/opt/ipaccess/Utils/scripts/set_reboot_cause MISCELLANEOUS "U-Boot relocation"
+	reboot
+	sleep 60
+else
+	echo "relocatation not required - nothing to be done"
+fi
+
+exit 0
+

@@ -1,0 +1,117 @@
+#!/bin/bash
+#############################################################
+# Script used to  start tcpdump in permanent log-rotate mode.
+#############################################################
+#
+# (C) ip.access 2009
+#############################################################
+
+. /etc/init.d/functions
+RETVAL=0
+TCPDUMP_APP='/bin/tcpdump'
+ENV_VARIABLE_SOURCE='/var/ipaccess/nv_env.sh'
+if [ -e $ENV_VARIABLE_SOURCE ]; then
+	source $ENV_VARIABLE_SOURCE
+fi
+
+# File size in units of 1000,0000 Bytes
+if [ "${FS_VARIANT:0:3}" = "205" ]; then
+    # use smaller file size on PC202 based femto (with 64Mb RAM)
+    # to save memory
+    FILESIZE=0.5
+else
+    FILESIZE=1
+fi
+
+NUM_FILES=2
+CAPTURE_FILENAME='/tmp/tcpdump.pcap'
+PHY='any'
+
+if [ -z "${ENV_TCPDUMP_FILTER:-}" ]; then
+	ENV_TCPDUMP_FILTER="\
+(tcp
+ and not tcp port 22 
+ and (not ip host 127.0.0.1 or greater 52)
+ and (not tcp port 3052 or ip host 127.0.0.1)
+ and not (tcp dst port 8020 and (tcp[33] = 0x2b or tcp[33] = 0x2c or tcp[33]= 0x2d) and (tcp[42] = 0x2c or tcp[42] = 0x2d))
+ and not (tcp dst port 12345 and tcp[34] = 0x66 and tcp[36] = 0x67 and tcp[58] = 0x1f and tcp[59] = 0)
+ and not tcp port 443
+ and not tcp port 7547
+)
+or
+ icmp
+or
+ sctp
+or
+ udp port 13108 or udp port 13109 or
+ udp port 500 or (udp port 4500 and (udp[8] = 0xff or udp[8:4] = 0)) or
+ (udp
+  and not ip host 127.0.0.1
+  and not (udp port 4500 or udp port 3000 or udp port 3002 or udp port 5000 or udp port 5002 or
+           udp port 2152 or udp portrange 1024-1150))"
+fi
+if [ "$ENV_TCPDUMP_ESP_ON" -eq "1" ]; then
+    ENV_TCPDUMP_FILTER="(("$ENV_TCPDUMP_FILTER") or (udp port 4500 or udp port 500))"
+    echo "ESP capture activated"
+fi
+
+start()
+{
+    CMD="$TCPDUMP_APP -C $FILESIZE -W $NUM_FILES -w $CAPTURE_FILENAME -i $PHY -s 0"
+
+    echo -n "Starting $TCPDUMP_APP: "
+    is_app_running `basename $TCPDUMP_APP`
+    if [ $? != $TRUE ]; then
+        $CMD "$ENV_TCPDUMP_FILTER" &
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+            echo OK
+        else
+            echo FAILURE
+        fi
+    else
+        echo "FAILURE (already running)"
+    fi
+}
+
+
+stop()
+{
+    stopapp `basename $TCPDUMP_APP`
+}
+
+stopapp() {
+    echo -n "Stopping $1: "
+    kill `pidof -o $$ -o $PPID -o %PPID $1` >/dev/null 2>&1
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL
+

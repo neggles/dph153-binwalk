@@ -1,0 +1,92 @@
+#/bin/bash
+####################################################################################
+# switchmon-wrapper (c) ipaccess 2008
+# James Harrow
+#
+####################################################################################
+# This script calls ipa-switchmon binary and when it returns handles the error code
+# From this is determines whether or not to reboot the board or reset factory defaults
+# It includes adding log entries
+#
+# NOTE: In order to background this, it is necessary to call this from a wrapper script
+# So /etc/rcS.d/S11switchmond (symlink to /etc/init.d/switchmond) calls this
+# "switchmon-wrapper" which in turn calls ipa-switchmon, but waits for it to finish...
+####################################################################################
+
+source /etc/init.d/functions
+
+PROG="/opt/ipaccess/bin/ipa-switchmon"
+REBOOT_CMD="reboot"
+RETVAL=0
+
+#####################################################################################
+# Helper function: reboot_board
+#####################################################################################
+reboot_board()
+{
+  log_entry "Rebooting now due to power switch reset..."
+  sync
+  $REBOOT_CMD
+}
+
+#####################################################################################
+# Helper function: restore_factory_defaults
+#####################################################################################
+restore_factory_defaults()
+{
+  log_entry "Resetting Factory defaults..."
+  /opt/ipaccess/Utils/scripts/factoryrestore
+  
+  # The factoryrestore script should reboot the AP, but just to be sure.......
+  reboot_board
+}
+
+#####################################################################################
+# Helper function: check_switch_return_code
+#####################################################################################
+check_switch_return_code()
+{
+  # Return code is stored in magic variable $?
+  RETVAL=$?
+  log_entry "Reset switch pressed! Detected condition $RETVAL..."
+  case $RETVAL in
+  '103' )
+    echo
+    /opt/ipaccess/Utils/scripts/set_reboot_cause USER_FACTORY_RESTORE
+    restore_factory_defaults
+    ;;
+  '104' )
+    /opt/ipaccess/Utils/scripts/set_reboot_cause USER_REINITIALISE
+    reboot_board
+    ;;
+  * )
+    log_entry "Unknown resetswitch return value $RETVAL"
+    ;;
+  esac
+}
+
+#####################################################################################
+# Helper Function: start()
+#####################################################################################
+start()
+{
+  #Starting resetswitch monitoring app
+  if [ -a $PROG ]
+  then
+    log_entry "Begin monitoring Reset Switch..."
+    $PROG
+    check_switch_return_code
+  else
+    log_entry "$PROG not found!"
+  fi
+}
+
+
+###
+# Call start!
+###
+start
+
+
+exit $RETVAL
+

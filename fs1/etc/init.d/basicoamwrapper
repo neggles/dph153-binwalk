@@ -1,0 +1,106 @@
+#!/bin/bash
+#
+# Top level Basic OAM control script - this downloads and extracts
+# the scripts then executes each one, passing the exit code back to
+# the Basic OAM web interface.
+#
+
+# uncomment to debug
+#set -v -o xtrace
+
+# Read in ENV_ variables
+[ -r /var/ipaccess/nv_env.sh ] && source /var/ipaccess/nv_env.sh
+
+if [ "$ENV_BASICOAM_DISABLED" = "TRUE" ]; then
+    echo "BASIC_OAM: Basic OAM is disabled in nv_env.sh"
+    exit 0
+fi
+
+source /etc/init.d/basicoamcommon
+CAUSE=periodic
+DO_RESET=0
+LOCK_FILE=/tmp/basicoam.lock
+
+# prevent multiple instances
+if [ -f $LOCK_FILE ]; then
+    log_result 0 101
+    exit 1
+fi
+touch $LOCK_FILE
+
+if [ "$1" != "periodic" ]; then
+    CAUSE=reboot
+    TIMEOUT=10
+else
+    TIMEOUT=60
+fi
+
+fetch_oamfile()
+{
+    _oamfile=$1
+    echo "Fetching basicoam file"
+    ${DLC} -m $TIMEOUT -s "$BASE_URL&cause=$CAUSE" -o ${_oamfile}
+    if [ "$?" != "0" -o ! -s $1 ]; then
+        echo "Failed to retreive file"
+        rm -f $LOCK_FILE
+        exit 1
+    fi
+}
+
+fetch_oamfile $TARGET_FILE
+
+rm -rf $TARGET_DIR
+mkdir -p $TARGET_DIR
+tar xzf $TARGET_FILE -C $TARGET_DIR
+
+if [ -f $TARGET_DIR/scripts/basicoamcfg ]; then
+    source $TARGET_DIR/scripts/basicoamcfg
+else
+    rm -f $LOCK_FILE
+    exit 2
+fi
+
+if [ "$ENABLED_SCRIPTS" == "" ]; then
+    echo "No scripts enabled"
+else
+    echo "Will execute scripts:" $ENABLED_SCRIPTS
+    for stype in $ENABLED_SCRIPTS; do
+        FNAME=$TARGET_DIR/scripts/basicoam${stype}
+        if [ -f $FNAME ]; then
+            # chmod it just in case...
+            chmod +x $FNAME
+            echo "Executing `basename $FNAME`.."
+            $FNAME; RETVAL=$?
+            # retval of 99 is special value meaning success but
+            # neet to reset the board - this is so we can indicate
+            # success back to the OAM server to disable this script
+            # if single shot is enabled
+            if [ $RETVAL == 99 ]; then
+                echo "Script `basename $FNAME` requested a reboot"
+                DO_RESET=1
+                RETVAL=0
+            fi
+            echo "Script `basename $FNAME` completed with retval $RETVAL"
+            log_result $stype  $RETVAL
+        else
+            echo "Script `basename $FNAME` is missing"
+            log_result $stype 100
+        fi
+    done
+fi
+
+# remove downloaded file and temp directory
+if [ -f $TARGET_FILE ]; then
+    rm -f $TARGET_FILE
+fi
+if [ -d $TARGET_DIR ]; then
+    rm -rf $TARGET_DIR
+fi
+
+rm -f $LOCK_FILE
+
+# perform a reset if any of the scripts requested it
+if [ $DO_RESET == 1 ]; then
+    /opt/ipaccess/Utils/scripts/set_reboot_cause MISCELLANEOUS "Basic OAM"
+    $RESET
+fi

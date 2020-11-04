@@ -1,0 +1,61 @@
+#!/bin/bash
+#
+# nwlIf        Startup Network Listen Interface
+# 
+
+. /etc/init.d/functions
+
+PROG="nwlIf_forarm"
+APP=/opt/ipaccess/bin/$PROG
+RETVAL=0
+
+start() {
+    echo -n "Starting $PROG: "
+    is_app_running $PROG
+    if [ $? != $TRUE ]; then
+        $APP 10002 0 &
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+            echo OK
+        else
+            echo FAILURE
+        fi
+    else
+        echo "FAILURE (already running)"
+    fi
+}
+
+stop() {
+    echo -n "Stopping $PROG: "
+    kill -9 `pidof -o $$ -o $PPID -o %PPID $PROG` >/dev/null 2>&1
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

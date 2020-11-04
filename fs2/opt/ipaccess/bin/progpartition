@@ -1,0 +1,49 @@
+#!/bin/bash
+#
+# write a cramfs image file to an MTD partition
+#
+CRAMFSCK=/opt/ipaccess/bin/cramfsck
+ERASEALL=/usr/sbin/flash_eraseall
+
+# verify command line parameters
+if [ $# -ne 2 -o ! -f "$1" -o ! -b "$2" ]; then
+	echo "usage: `basename $0` file device"
+	echo "  file   is the cramfs image file"
+	echo "  device is an MTD block device"
+	exit 65
+fi
+
+NAME=`basename $0`
+CRAMFILE=$1
+MTDBLOCKDEV=$2
+# work out device number from device node
+MTDDEVNUM=`ls -la $2 | awk '{print $6}'`
+# and use it to find the character device
+MTDCHARDEV=/dev/mtd$MTDDEVNUM
+
+if [ ! -c $MTDCHARDEV ]; then
+	echo "$NAME: $MTDBLOCKDEV does not have a character device at $MTDCHARDEV"
+	exit 1
+fi
+
+# verify that it's a valid image before writing it
+$CRAMFSCK $CRAMFILE; RETVAL=$?
+
+if [ $RETVAL == 0 ]; then
+	echo "$NAME: Erasing MTD device $MTDDEVNUM via $MTDCHARDEV"
+	# erase flash partition
+	$ERASEALL $MTDCHARDEV; RETVAL=$?
+	if [ $RETVAL == 0 ]; then
+		# write image (via character device)
+		echo "$NAME: Writing $CRAMFILE"
+		cat $CRAMFILE >> $MTDCHARDEV
+		# verify image in flash
+		echo "$NAME: Verifying cramfs image on $MTDBLOCKDEV"
+		$CRAMFSCK $MTDBLOCKDEV; RETVAL=$?
+		if [ $RETVAL == 0 ]; then
+			echo "$NAME: Verified OK"
+		fi
+	fi
+fi
+
+exit $RETVAL

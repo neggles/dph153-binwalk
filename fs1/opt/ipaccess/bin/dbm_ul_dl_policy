@@ -1,0 +1,308 @@
+#!/bin/bash
+
+#    DESCRIPTION:
+#        This file can be used to:
+#        1. Add Policing in Uplink using Heirarchical Token Bucket [HTB] 
+#        2. Add Policing in Donwlink using Ingress Policing 
+#        2. Modify Ingress and HTB 
+#        3. Show Ingress and HTB information
+#
+
+
+DEV=eth0
+DLCSIPSECRATIO=192
+DLPSIPSECRATIO=133
+MIN_TC_RATE=10
+
+#SYNTAX
+#Usage: setup_dl"  INGRESS
+#    arg1: Bandwidth in Kilobit per second
+#    arg2: MAX no. of CS Call Supported
+#    arg3: Number of Active CS Calls
+setup_dl() {
+    #echo "Invoking setup_dl"
+    if [ $# -ne 3 ]; then
+        echo "Usage:setup_dl
+            arg1: Bandwidth in Kilobit per second
+            arg2: MAX no. of CS Call Supported
+            arg3: Active CS Count"
+        return 1
+    fi
+    process="$(pgrep -f dbm_setup_dl | grep -v $$)"
+    if [ "$process" != "" ]
+    then
+        kill $process 2>/dev/null
+    fi
+    process="$(pgrep -f dbm_modify_dl | grep -v $$)"
+    if [ "$process" != "" ]
+    then
+        kill $process 2>/dev/null
+    fi
+
+    BW_DL=$1
+    if [ $BW_DL -lt ${MIN_TC_RATE} ]; then
+    	BW_DL=${MIN_TC_RATE}
+    fi
+
+    MAXCS=$((${2} + 1))
+    if [ $MAXCS -lt 1 ]; then
+    	MAXCS=1
+    fi
+
+    DLCSCALL=$((50*75*8/1000))
+    CSBW_DL=$(($MAXCS*$DLCSCALL))
+    if [ $CSBW_DL -lt ${MIN_TC_RATE} ];then
+    	CSBW_DL=${MIN_TC_RATE}
+    fi
+   
+    ACTIVE_CS=$((${3} + 1))
+    if [ $ACTIVE_CS -lt 1 ]; then
+    	ACTIVE_CS=1
+    fi
+    CSBW_DL_FOR_PS=$(($ACTIVE_CS*$DLCSCALL))
+
+    MGTBW_DL=$[$BW_DL/10]
+    if [ $MGTBW_DL -lt ${MIN_TC_RATE} ];then
+    	MGTBW_DL=${MIN_TC_RATE}
+    fi
+    PSBW_DL=$[($BW_DL*100-($CSBW_DL_FOR_PS*$DLCSIPSECRATIO)-$MGTBW_DL*100)/$DLPSIPSECRATIO]
+    if [ $PSBW_DL -lt ${MIN_TC_RATE} ]; then
+    	PSBW_DL=$MIN_TC_RATE
+    fi
+    if [ $(( $CSBW_DL+$PSBW_DL+$MGTBW_DL )) -gt ${BW_DL} ] ; then
+        BW_DL=$(( $CSBW_DL+$PSBW_DL+$MGTBW_DL ))
+    fi
+    PS_DL_BURST=$[${PSBW_DL}/80]
+    if [ $PS_DL_BURST -lt 2 ] ; then
+        PS_DL_BURST=2
+    fi
+
+    IPSECBW_DL=$[${BW_DL}*2]
+    IPSEC_DL_BURST=$[${IPSECBW_DL}/80]
+    
+    if [ $IPSEC_DL_BURST -lt 10 ] ; then
+        IPSEC_DL_BURST=10
+    fi
+    
+    tc qdisc del dev ${DEV} ingress
+    tc qdisc add dev ${DEV} handle ffff: ingress
+    tc filter add dev ${DEV} parent ffff:0 handle ::1 prio 1 protocol ip u32 match ip sport 4500 0xffff police rate ${IPSECBW_DL}kbit burst ${IPSEC_DL_BURST}k continue flowid 1:1
+    tc filter add dev ${DEV} parent ffff:0 handle ::2 prio 2 protocol ip u32 match ip tos 184 0xfc police rate ${CSBW_DL}kbit burst 10k continue flowid 1:2
+    tc filter add dev ${DEV} parent ffff:0 handle ::3 prio 3 protocol ip u32 match ip tos 40 0xfc police rate ${MGTBW_DL}kbit burst 5k continue flowid 1:3
+    tc filter add dev ${DEV} parent ffff:0 handle ::4 prio 4 protocol ip u32 match ip tos 0 0x00  police rate ${PSBW_DL}kbit burst ${PS_DL_BURST}k drop flowid 1:4
+}
+
+#INGRESS
+show_dl() {
+    tc -s filter show dev ${DEV} parent ffff:
+}
+
+
+# SYNTAX HTB
+#    arg1: Bandwidth in Kilobit per second
+#    arg2: MAX CS Call Supported
+setup_ul() {
+    #echo "Invoking setup_ul"
+    if [ $# -ne 2 ]; then
+        echo "Usage:setup_ul
+            arg1: Bandwidth in Kilobit per second
+            arg2: MAX CS Call Supported"
+        return 1
+    fi
+    process="$(pgrep -f dbm_setup_ul | grep -v $$)"
+    if [ "$process" != "" ]
+    then
+        kill $process 2>/dev/null
+    fi
+    process="$(pgrep -f dbm_modify_ul | grep -v $$)"
+    if [ "$process" != "" ]
+    then
+        kill $process 2>/dev/null
+    fi
+    BW_UL=$1
+    if [ $BW_UL -lt ${MIN_TC_RATE} ]; then
+    	BW_UL=${MIN_TC_RATE}
+    fi
+
+    MAXCS=$(($2 + 1))
+    if [ $MAXCS -lt 1 ]; then
+    	MAXCS=1
+    fi
+
+    CSBW_UL=$((( ${MAXCS} * 18) + 42 )) # 8 CS calls with applied mux/ipsec factor
+    if [ $CSBW_UL -lt ${MIN_TC_RATE} ];then
+    	CSBW_UL=${MIN_TC_RATE}
+    fi
+
+    MGTBW_UL=$(( ${BW_UL} / 10 )) # 10% to management traffic
+    if [ $MGTBW_UL -lt ${MIN_TC_RATE} ];then 
+    	MGTBW_UL=${MIN_TC_RATE}
+    fi
+
+    PSBW_UL=$(( ${BW_UL}-${CSBW_UL}-${MGTBW_UL} )) # the rest to PS
+    if [ $PSBW_UL -lt ${MIN_TC_RATE} ]; then
+    	PSBW_UL=${MIN_TC_RATE}
+    fi
+
+    if [ $(( $CSBW_UL+$PSBW_UL+$MGTBW_UL )) -gt ${BW_UL} ] ; then
+        BW_UL=$(( $CSBW_UL+$PSBW_UL+$MGTBW_UL ))
+    fi
+
+    tc qdisc del dev ${DEV} root
+    tc qdisc add dev ${DEV} root handle 1: htb default 30
+    tc class add dev ${DEV} parent 1: classid 1:1 htb rate ${BW_UL}Kbit burst 15k
+    tc class add dev ${DEV} parent 1:1 classid 1:10 htb rate ${CSBW_UL}Kbit ceil ${BW_UL}Kbit burst 15k prio 1
+    tc filter add dev ${DEV} parent 1:0 prio 1 protocol ip u32 match ip tos 184 0xff flowid 1:10
+    tc class add dev ${DEV} parent 1:1 classid 1:20 htb rate ${MGTBW_UL}Kbit ceil ${BW_UL}Kbit burst 5k prio 2
+    tc filter add dev ${DEV} parent 1:0 prio 1 protocol ip u32 match ip tos 40 0xff flowid 1:20
+    tc class add dev ${DEV} parent 1:1 classid 1:30 htb rate ${PSBW_UL}Kbit ceil ${BW_UL}Kbit burst 5k prio 3
+}
+
+#HTB
+show_ul() {
+    tc -s class show dev ${DEV}
+}
+
+# SYNTAX  INGRESS
+#    arg1: Bandwidth in Kilobit per second
+#    arg2: Active CS Call Count
+modify_dl() {
+    #echo "Invoking modify_dl"
+    if [ $# -ne 2 ]; then
+        echo "Usage:modify_dl
+            arg1: Bandwidth in Kilobit per second
+            arg2: Active CS Call Count"
+        return 1
+    fi
+    if [ "$(pgrep -f dbm_setup_dl | grep -v $$ | wc -l)" -ne 0 ]; then
+        return 1
+    fi
+    process="$(pgrep -f dbm_modify_dl | grep -v $$)"
+    if [ "$process" != "" ]
+    then
+        kill $process 2>/dev/null
+    fi
+    BW_DL=$1
+    if [ $BW_DL -lt ${MIN_TC_RATE} ]; then
+    	BW_DL=${MIN_TC_RATE}
+    fi
+
+    CSCALLCOUNT=$((${2} + 1))
+    if [ $CSCALLCOUNT -lt 1 ]; then
+    	CSCALLCOUNT=1
+    fi
+    DLCSCALL=$((50*75*8/1000))
+    CSBW_DL=$(($CSCALLCOUNT*$DLCSCALL))
+    if [ $CSBW_DL -lt ${MIN_TC_RATE} ];then
+    	CSBW_DL=${MIN_TC_RATE}	
+    fi
+    MGTBW_DL=$[$BW_DL/10]
+    if [ $MGTBW_DL -lt ${MIN_TC_RATE} ];then
+    	MGTBW_DL=${MIN_TC_RATE}
+    fi
+    PSBW_DL=$[($BW_DL*100-($CSBW_DL*$DLCSIPSECRATIO)-$MGTBW_DL*100)/$DLPSIPSECRATIO]
+    if [ $PSBW_DL -lt ${MIN_TC_RATE} ]; then
+    	PSBW_DL=${MIN_TC_RATE}
+    fi
+    if [ $(( $CSBW_DL+$PSBW_DL+$MGTBW_DL )) -gt ${BW_DL} ] ; then
+        BW_DL=$(( $CSBW_DL+$PSBW_DL+$MGTBW_DL ))
+    fi
+    PS_DL_BURST=$[${PSBW_DL}/80]
+    if [ $PS_DL_BURST -lt 2 ] ; then
+    PS_DL_BURST=2
+    fi
+    tc filter change dev ${DEV} handle 803::4 parent ffff:0 prio 4 protocol ip u32 match ip tos 0 0x00  police rate ${PSBW_DL}kbit burst ${PS_DL_BURST}k drop flowid 1:4
+}
+
+# SYNTAX  HTB
+#    arg1: Bandwidth in Kilobit per second
+#    arg2: Active CS Call Count
+modify_ul() {
+    #echo "Invoking modify_ul"
+    if [ $# -ne 2 ]; then
+        echo "Usage:modify_ul
+            arg1: Bandwidth in Kilobit per second
+            arg2: Active CS Call Count"
+        return 1
+    fi
+    if [ "$(pgrep -f dbm_setup_ul | grep -v $$ | wc -l)" -ne 0 ];then
+        return 1
+    fi
+    process="$(pgrep -f dbm_modify_ul | grep -v $$)"
+    if [ "$process" != "" ]
+    then
+        kill $process 2>/dev/null
+    fi
+    BW_UL=$1
+    if [ $BW_UL -lt ${MIN_TC_RATE} ]; then
+    	BW_UL=${MIN_TC_RATE}
+    fi
+    CSCALLCOUNT=$((${2} + 1))
+    if [ $CSCALLCOUNT -lt 1 ]; then
+    	CSCALLCOUNT=1
+    fi
+    CSBW_UL=$((( ${CSCALLCOUNT} * 18) + 42 )) # 8 CS calls with applied mux/ipsec factor
+    if [ $CSBW_UL -lt ${MIN_TC_RATE} ];then
+    	CSBW_UL=${MIN_TC_RATE}
+    fi
+
+    MGTBW_UL=$(( ${BW_UL} / 10 )) # 10% to management traffic
+    if [ $MGTBW_UL -lt ${MIN_TC_RATE} ];then
+    	MGTBW_UL=${MIN_TC_RATE}
+    fi
+
+    PSBW_UL=$(( ${BW_UL}-${CSBW_UL}-${MGTBW_UL} )) # the rest to PS
+    if [ $PSBW_UL -lt ${MIN_TC_RATE} ]; then
+    	PSBW_UL=${MIN_TC_RATE}
+    fi
+    if [ $(( $CSBW_UL+$PSBW_UL+$MGTBW_UL )) -gt ${BW_UL} ] ; then
+        BW_UL=$(( $CSBW_UL+$PSBW_UL+$MGTBW_UL ))
+    fi
+    tc class change dev ${DEV} parent 1:1 classid 1:30 htb rate ${PSBW_UL}Kbit ceil ${BW_UL}Kbit burst 5k prio 3
+}
+
+# Command Line Processing
+
+case "$1" in
+    dbm_setup_ul)
+    shift
+        setup_ul $@
+    ret=$?
+        ;;
+    dbm_setup_dl)
+    shift
+           setup_dl $@ 
+    ret=$?
+        ;;
+    dbm_modify_ul)
+    shift
+        modify_ul $@
+    ret=$?
+    ;;
+    dbm_modify_dl)
+    shift
+        modify_dl $@
+    ret=$?
+    ;;
+    dbm_show_dl)
+    shift
+        show_dl $@
+    ret=$?
+    ;;
+    dbm_show_ul)
+    shift
+        show_ul $@
+    ret=$?
+    ;;
+    *)
+        echo "Usage: $0 
+        1. dbm_setup_ul
+        2. dbm_modify_ul
+        3. dbm_show_ul
+        4. dbm_setup_dl
+        5. dbm_modify_dl
+        6. dbm_show_dl"
+        exit 1
+esac
+exit $ret
+

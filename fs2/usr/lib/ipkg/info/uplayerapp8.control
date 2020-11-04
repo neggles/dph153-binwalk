@@ -1,0 +1,10 @@
+Package: uplayerapp8
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 579.11.144
+Description: UPlayerApp
+Source: ip.access
+Depends: 

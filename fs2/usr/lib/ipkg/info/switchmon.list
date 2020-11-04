@@ -1,0 +1,5 @@
+/etc/rcS.d/S05switchmond
+/opt/ipaccess/bin/ipa-switchmon.579.11.144
+/etc/init.d/switchmond
+/opt/ipaccess/bin/ipa-switchmon
+/opt/ipaccess/bin/switchmon-wrapper

@@ -1,0 +1,9 @@
+Package: 3gctrlappcfg-iuh-226
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 579.11.142
+Description: 3gcntrl for iuh-226
+Source: ip.access

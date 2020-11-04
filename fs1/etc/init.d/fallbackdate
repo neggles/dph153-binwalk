@@ -1,0 +1,138 @@
+#!/bin/bash
+#
+# /etc/init.d/fallbackdate        Set a default system time and date.
+# 
+#
+
+. /etc/init.d/functions
+
+#set -o xtrace -v
+
+# DEFINES
+HWDESWRK=/var/ipaccess/hw_description.dat
+RETVAL=0
+
+# COMMANDS
+DATECMD=/bin/date
+GETVARVAL=/opt/ipaccess/Utils/scripts/getVarVal
+
+
+###############################################################################
+# FUNCTION: set_fallback_date
+#  set the date to something more recent than 1 Jan 1970
+# ARGUMENTS
+#  none 
+###############################################################################
+set_fallback_date()
+{
+    # Set a fall-back date. Use the newest of
+    #   The date of the in-service counter file,
+    #   The calibration date from /var/ipaccess/radiocal.dat
+    #   The date: 1/1/2009
+    # Date stamps are compared in the format CCYYMMDDhhmm (i.e. simple numerical compare)
+    # and then converted to MMDDhhmmCCYY for the date command.
+
+    FALLBACK=200901010000
+
+    STAMP=$($DATECMD -r /var/ipaccess/service_counter.dat +%Y%m%d%H%M 2>/dev/null)
+    #200902251400
+    if [ x"$STAMP" != x ]; then
+        [ $STAMP -gt $FALLBACK ] && FALLBACK=$STAMP
+    fi
+
+    STAMP=
+    if [ -f /var/ipaccess/radiocal.dat ]; then
+        STAMP=$(${GETVARVAL} /var/ipaccess/radiocal.dat CALIBRATION_DATE)
+    elif [ -f /var/ipaccess/factory_config/radiocal.dat ]; then
+        STAMP=$(${GETVARVAL} /var/ipaccess/factory_config/radiocal.dat CALIBRATION_DATE)
+    fi
+    # MKS 79384 - trim any bad date in radiocal.dat to 12 chars
+    STAMP="${STAMP:0:12}"
+    #200812011657
+    if [ x"$STAMP" != x ]; then
+        [ $STAMP -gt $FALLBACK ] && FALLBACK=$STAMP
+    fi
+    
+    # Guard against ntp having set the date, and inadvertantly stepping the 
+    # time backwards
+    STAMP=$($DATECMD +%Y%m%d%H%M 2>/dev/null)
+    if [ x"$STAMP" != x ] && [ $STAMP -gt $FALLBACK ]; then
+        echo "WARNING: not setting date as current date later than fallback date."
+        return 0
+    fi
+
+    # Use bash sub-string operations to convert CCYYMMDDhhmm to MMDDhhmmCCYY
+    DATE_STR="${FALLBACK:4}${FALLBACK:0:4}"
+    #010100002009
+
+    echo -n "Setting fallback date: "
+    $DATECMD $DATE_STR
+}
+
+
+###############################################################################
+# FUNCTION: reset
+#  nop
+# ARGUMENTS
+#  none 
+###############################################################################
+reset()
+{
+    echo "WARNING: cannot reset the date"
+}
+
+
+###############################################################################
+# FUNCTION: start
+#  handler for start script argument opiton
+# ARGUMENTS
+#  none 
+###############################################################################
+start() {
+
+    set_fallback_date
+}
+
+###############################################################################
+# FUNCTION: stop
+#  handler for stop script argument opiton
+# ARGUMENTS
+#  none
+###############################################################################
+stop() 
+{
+    echo "WARNING: date is not being updated"
+}
+
+###############################################################################
+# FUNCTION: restart
+#  handler for restart script argument opiton
+# ARGUMENTS
+#  none
+###############################################################################
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    reset)
+        reset
+        ;;        
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|reset|restart}"
+        exit 1
+esac
+
+exit $RETVAL

@@ -1,0 +1,79 @@
+#!/bin/bash
+#
+# script run on startup to generate /tmp/logs/last_reboot_* files
+# can also be called manually but show simple/history files
+#
+REBOOT_LOGS=/var/ipaccess/logs/reboots
+TMP_LOGS=/tmp/logs
+FLASH_LAST_REBOOT_CAUSE=${REBOOT_LOGS}/last_reboot_cause
+TMP_LAST_REBOOT_SIMPLE=${TMP_LOGS}/last_reboot_simple
+FLASH_LAST_REBOOT_HISTORY=${REBOOT_LOGS}/last_reboot_history
+TMP_LAST_REBOOT_HISTORY=${TMP_LOGS}/last_reboot_history
+# determine which bank we booted from (can't read it from boot_params
+# as that hasn't been created yet)
+BOOTDEV=
+for p in $(cat /proc/cmdline); do
+    case $p in
+        root=*)
+            BOOTDEV=`echo $p | awk -F= '{print $2}'`
+            ;;
+    esac
+done
+BOOT_BANK=0
+if [ "$BOOTDEV" = /dev/mtdblock6 ]; then
+    BOOT_BANK=1
+fi
+
+init()
+{
+    mkdir -p $TMP_LOGS
+
+    if [ -s $FLASH_LAST_REBOOT_CAUSE ]; then
+        # reboot cause was recorded on previous shutdown, add boot bank
+        # and move the file to /tmp/ location
+        cp $FLASH_LAST_REBOOT_CAUSE ${TMP_LAST_REBOOT_SIMPLE}.creating
+        echo ",$BOOT_BANK" >> ${TMP_LAST_REBOOT_SIMPLE}.creating
+        mv ${TMP_LAST_REBOOT_SIMPLE}.creating ${TMP_LAST_REBOOT_SIMPLE}
+        rm -f ${FLASH_LAST_REBOOT_CAUSE}
+    else
+        # non-clean shutdown, generate file
+        mkdir -p $REBOOT_LOGS
+        # take timestamp from modification time of service_counter.dat, this gives
+        # the best approximation of the last time the AP was running
+        TSTAMP=$(date -r /var/ipaccess/service_counter.dat +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)
+        if [ "${TSTAMP}" = "" ]; then
+            TSTAMP="0000-00-00T00:00:00Z"
+        fi
+        # warmstart checks SRAM to see if this is a warm/cold boot
+        WSVAL=$(/opt/ipaccess/bin/warmstart)
+        if [ "$WSVAL" = "1" -o "$WSVAL" = "2" ]; then
+            CAUSE="61,NON_CLEAN_SHUTDOWN_WARM"
+        else
+            CAUSE="62,NON_CLEAN_SHUTDOWN_COLD"
+        fi
+        echo "$CAUSE,0,$TSTAMP,\"\",$BOOT_BANK" > $TMP_LAST_REBOOT_SIMPLE
+    fi
+
+    # copy latest reboot cause to create new history file
+    cp $TMP_LAST_REBOOT_SIMPLE ${FLASH_LAST_REBOOT_HISTORY}.new
+    # then add up to 999 history lines
+    if [ -f $FLASH_LAST_REBOOT_HISTORY ]; then
+        head -999 $FLASH_LAST_REBOOT_HISTORY >> ${FLASH_LAST_REBOOT_HISTORY}.new
+    fi
+    # replace current - this should be atomic
+    mv ${FLASH_LAST_REBOOT_HISTORY}.new $FLASH_LAST_REBOOT_HISTORY
+    # now generate /tmp file with up to 20 newest entries
+    head -20 $FLASH_LAST_REBOOT_HISTORY > $TMP_LAST_REBOOT_HISTORY
+}
+
+case "$1" in
+    start|init)
+        init
+        ;;
+    -h)
+        cat $TMP_LAST_REBOOT_HISTORY 2>/dev/null
+        ;;
+    -s|*)
+        cat $TMP_LAST_REBOOT_SIMPLE 2>/dev/null
+esac
+

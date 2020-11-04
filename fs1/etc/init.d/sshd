@@ -1,0 +1,135 @@
+#!/bin/bash
+#
+# sshd       Start/stop secure shell daemon (dropbear)
+#
+
+. /etc/init.d/functions
+
+NVENV=/var/ipaccess/nv_env.sh
+
+if [ -f $NVENV ]; then
+    source $NVENV
+fi
+
+PROG="dropbear"
+APP=/usr/bin/$PROG
+PIDFILE=/var/run/$PROG.pid
+KEYGEN=/usr/bin/dropbearkey
+DSS_KEY=/etc/ssh/dss_host_key
+RSA_KEY=/etc/ssh/rsa_host_key
+RETVAL=0
+BANNER_FILE=/tmp/sshd_banner
+
+do_rsa_keygen() {
+    if [ ! -s $RSA_KEY ]; then
+        echo -n "Generating SSH2 RSA host key: "
+        if $KEYGEN -t rsa -f $RSA_KEY >&/dev/null; then
+            chmod 600 $RSA_KEY
+            echo "OK"
+        else
+            echo "FAILURE"
+            exit 1
+        fi
+    fi
+}
+
+do_dss_keygen() {
+    if [ ! -s $DSS_KEY ]; then
+        echo -n "Generating SSH2 DSS host key: "
+        if $KEYGEN -t dss -f $DSS_KEY >&/dev/null; then
+            chmod 600 $DSS_KEY
+            echo "OK"
+        else
+            echo "FAILURE"
+            exit 1
+        fi
+    fi
+}
+
+init()
+{
+    # create keys if necessary
+    do_rsa_keygen
+    do_dss_keygen
+
+    /opt/ipaccess/Utils/scripts/getbanner ssh > $BANNER_FILE
+
+    if [ $? = 0 -a -f $BANNER_FILE ]; then
+        OPTS="-b $BANNER_FILE"
+    else
+        OPTS=""
+    fi
+
+    # If consoles are enabled, then listen to port 22 on any interface
+    # If console is disabled, only listen on lo interface to support reverse ssh    
+    if [ "$ENV_VERBOSE_CONSOLE_ENABLED" == "TRUE" ]; then
+        LISTEN_ON=22
+    else
+        LISTEN_ON=127.0.0.1:22
+    fi
+
+    if [ -f $APP ]
+    then
+        $APP $OPTS -d $DSS_KEY -r $RSA_KEY -p $LISTEN_ON
+    else
+        echo "No ssh server found"
+    fi
+}
+
+start() {
+    echo -n "Starting $PROG: "
+    if [ -f $PIFILE ]; then
+        init
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+            echo "OK"
+        else
+            echo "FAILURE"
+        fi
+    else
+        echo "FAILURE (already running)"
+    fi
+}
+
+stop() {
+    echo -n "Stopping $PROG: "
+    if [ -f $PIDFILE ]; then
+        PID=`cat $PIDFILE`
+        kill -9 $PID >/dev/null 2>&1
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+            killall dropbear >/dev/null 2>&1 # kill children
+            rm -f $PIDFILE
+            echo "OK"
+        else
+            echo "FAILURE"
+        fi
+    else
+        echo "not running"
+    fi
+}
+
+restart() {
+    stop
+    sleep 1
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

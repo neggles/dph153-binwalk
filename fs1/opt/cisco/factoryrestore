@@ -1,0 +1,81 @@
+#!/bin/sh
+
+##################################################################################### 
+# This script stops DslmSsp, Dslg_SysRegistry, gpstest, and rmmwd applications.
+# Removes Cisco configuration under /var/ipaccess/cisco.(except for the tamper flag)  
+##################################################################################### 
+
+PROG_DSLMSSP="DslmSsp" 
+PROG_DSLGSYSREG="Dslg_SysRegistry" 
+WDIR=/opt/cisco 
+CDIR=/var/ipaccess/cisco
+RETVAL=0 
+
+#store the location of present working directory in PDIR.
+PDIR=`pwd`
+
+cd $WDIR
+
+   # Stop the rmmwd, gpstest and gps_pollSWVersion utilities first.
+   kill -9 `pidof rmmwd`
+   kill -9 `pidof gpstest`
+   kill -9 `pidof gps_pollSWVersion`
+
+echo -n "Stopping $PROG_DSLMSSP: "
+kill -9 `pidof $PROG_DSLMSSP`
+RETVAL=$?                                                                                                                       
+   if [ $RETVAL -eq 0 ]; then                                                                                                      
+       echo OK                                                                                                                     
+   else                                                                                                                            
+       echo FAILURE                                                                                                                
+   fi          
+   # hang about for a bit to allow DslmSsp to die gracefully
+   sleep 1
+
+echo -n "Stopping $PROG_DSLGSYSREG: "                                                                                 
+kill -9 `pidof $PROG_DSLGSYSREG`                                                                                                
+RETVAL=$?                                                                                                                       
+   if [ $RETVAL -eq 0 ]; then                                                                                                      
+       echo OK                                                                                                                     
+   else                                                                                                                            
+       echo FAILURE                                                                                                                
+   fi                                                                                                                              
+   # hang about for a bit to allow Dslg_SysRegistry to die gracefully                                                              
+   sleep 1
+
+# cd to the /var/ipaccess/cisco directory and remove the config files except for the tamper flag.
+# check for the existence of the PartialFactoryRestore file. If it is present do not delete the RMM files
+if [ -f /var/ipaccess/cisco/PartialFactoryRestore ]; then                                                                                        
+      echo "PartialFactoryResore found. All RMM config files will not be restored to factory settings"
+      cd $CDIR
+
+      #Remove the agps.data file
+      rm -f agps.data
+      
+      #Remove the agps.data file
+      rm -f gps.cfg
+
+      #Remove the cmhs.dat file
+      rm -f cmhs.dat
+
+else
+        echo "PartialFactoryResore not found. RMM files will also be restored to factory settings"
+
+        cd $CDIR
+
+	#Remove all the .gz files.
+	rm -f *.gz
+
+	#Remove the agps.data file
+	rm -f agps.data
+	
+        #Remove the agps.data file
+	rm -f gps.cfg
+
+        #Remove the cmhs.dat file
+        rm -f cmhs.dat
+
+	# Once the factoryreset is complete,revert back to the present working directory.
+	cd $PDIR
+fi
+

@@ -1,0 +1,9 @@
+Package: uplayerappcfg-iuh-226
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 579.11.142
+Description: UPlayerApp for iuh-226
+Source: ip.access

@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# User can supply the number of devices to create - defautls to 1
+if test $1
+then
+    numDevs=$1
+    if [ ${numDevs} -eq 0 ]
+    then
+        numDevs=1
+    fi
+else
+    numDevs=1
+fi
+
+module="cpetd"
+major="240"
+
+for minor in `seq 0 1 $(($numDevs-1))`; do
+    devname=/dev/${module}${minor}
+    if [ -e $devname ]; then
+        rm -f $devname
+    fi
+    mknod $devname c $major $minor
+done
+ln -sf /dev/${module}0 /dev/$module
+
+# invoke modprobe with all arguments we got
+/sbin/modprobe $module cpetdNumDevs=${numDevs} cpetdMajor=${major} || exit 1
+

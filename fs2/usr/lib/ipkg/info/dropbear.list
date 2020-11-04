@@ -1,0 +1,10 @@
+/usr/bin/ssh
+/usr/bin/dropbearconvert
+/usr/share/doc/dropbear-0.50/LICENSE
+/usr/bin/scp
+/etc/init.d/sshd
+/usr/bin/dropbearkey
+/usr/bin/dropbearmulti
+/usr/bin/dbclient
+/etc/rcS.d/S10sshd
+/usr/bin/dropbear

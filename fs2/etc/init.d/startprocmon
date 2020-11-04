@@ -1,0 +1,78 @@
+#!/bin/bash
+#############################################################
+# Script used to start / stop procmon
+#############################################################
+#
+# (C) ip.access 2009
+#############################################################
+
+. /etc/init.d/functions
+RETVAL=0
+APP='/opt/ipaccess/bin/procmon'
+WORKING_CFG="/var/ipaccess/config/procmon.conf"
+DEFAULT_CFG="/opt/ipaccess/procmon.conf"
+
+start()
+{
+
+    echo -n "Starting `basename $APP`: "
+
+    if [ ! -f $WORKING_CFG ]; then
+        cp $DEFAULT_CFG $WORKING_CFG
+    fi
+
+    is_app_running `basename $APP`
+    if [ $? != $TRUE ]; then
+        $APP -c $WORKING_CFG &
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+            echo OK
+        else
+            echo FAILURE
+        fi
+    else
+        echo "FAILURE (already running)"
+    fi
+}
+
+
+stop()
+{
+    stopapp `basename $APP`
+}
+
+stopapp() {
+    echo -n "Stopping $1: "
+    kill `pidof -o $$ -o $PPID -o %PPID $1` >/dev/null 2>&1
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL
+

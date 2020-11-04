@@ -1,0 +1,17 @@
+#!/bin/bash
+# 
+#  $Id: shutdown 25982 2010-11-30 07:53:03Z goviagar $
+#*****************************************************************************
+#* CISCO CONFIDENTIAL
+#* Copyright (c) 2010, Cisco Systems, Inc.
+#*****************************************************************************
+# 
+
+#
+# Perform sync of current config file to bak config file before reboot
+#
+
+if [ -x /opt/cisco/syncconfig ] && [ "$1" -eq "0" ] ; then
+    echo "Performing current to bak sync ..."
+    /opt/cisco/syncconfig
+fi

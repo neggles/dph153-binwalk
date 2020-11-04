@@ -1,0 +1,10 @@
+Package: libxml2
+Provides: libxml2
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 2.7.3-ipa1
+Description: libxml2 run-time
+Source: ip.access

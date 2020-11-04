@@ -1,0 +1,8 @@
+Package: cisco-ipconfig
+Priority: optional
+Version: 1.0
+Section: misc
+Architecture: arm
+Maintainer: Cisco
+Source: misc
+Description: ipconfig file to use static IP on units with router chip

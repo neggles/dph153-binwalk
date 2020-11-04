@@ -1,0 +1,14 @@
+Device.DeviceInfo.ModelName=DPH151-AT V1
+Device.Services.FAPService.1.X_00000C_MHS.Config.StatusParameterNames=Device.Services.X_00000C_FAPService.Radio.Status,Device.Services.X_00000C_FAPService.Radio.ErrorDetails,Device.Services.X_00000C_FAPService.FGW.Fqdn,Device.Services.FAPService.{i}.Transport.Tunnel.IKESA.{i}.IPAddress,Device.DeviceInfo.X_00000C_3GModuleVersion,Device.DeviceInfo.X_00000C_GpsModuleVersion,Device.DeviceInfo.X_00000C_RouterModuleVersion,Device.DeviceInfo.ModelName
+Device.Services.FAPService.1.X_00000C_MHS.Config.DefaultServerURLs=cmhsse-decatur.wireless.att.com,cmhsse-lake-mary.wireless.att.com,cmhsne-rochelle-park.wireless.att.com,cmhsne-columbia.wireless.att.com,cmhsce-carrollton.wireless.att.com,cmhsce-hazelwood.wireless.att.com,cmhswe-santa-clara.wireless.att.com,cmhswe-santa-ana.wireless.att.com
+Device.Services.FAPService.1.X_00000C_MHS.Config.UpperHeartbeatInterval=120
+Device.Services.FAPService.1.X_00000C_MHS.Config.MaxStatsInterval=60
+Device.Services.FAPService.1.X_00000C_MHS.Config.XMPPDomainName=
+Device.Services.FAPService.1.X_00000C_MHS.Conn.ConnectionAttmeptsBeforeUnavailable=5
+Device.Services.FAPService.1.X_00000C_MHS.Conn.GracefulShutdownWaitTime=10000
+Device.Services.FAPService.1.X_00000C_MHS.Config.StartupScriptConfigWaitTime=10000
+DscpAcs=10
+Device.Services.FAPService.1.X_00000C_MHS.Conn.TCPConnectionTimeout=10000
+Device.Services.FAPService.1.X_00000C_MHS.Conn.TCPReadTimeout=10000
+Device.Services.FAPService.1.X_00000C_MHS.Conn.TCPWriteTimeout=10000
+Device.ManagementServer.X_00000C_CDPBaseURL=https://femtocell.wireless.att.com:443/file/

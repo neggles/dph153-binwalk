@@ -1,0 +1,25 @@
+#!/bin/bash
+# Simple script to purge old PM log files
+#
+ 
+PMLOG_FILES_PATH="/tmp/pm_logs"
+FLASH_RESERVED_FOR_PMLOGS=1024
+purge_old_files()
+{
+SIZE=`du -s $1 | awk '{ print $1 }'`
+echo "Pm Logs Size " $SIZE 
+while [ $SIZE -gt $FLASH_RESERVED_FOR_PMLOGS ]
+do
+FILE=`ls -rt $1 | awk '{ print $1 }'`
+echo "purging $1/$FILE"
+rm -f $1/$FILE
+SIZE=`du -s $1 | awk '{ print $1 }'`
+done
+}
+
+if [ ! -e $PMLOG_FILES_PATH ]
+then
+mkdir -p $PMLOG_FILES_PATH
+fi
+purge_old_files $PMLOG_FILES_PATH
+

@@ -1,0 +1,70 @@
+# 
+# strongSwan configuration
+#
+
+# general configuration parameters
+config setup
+	# determines whether a valid CRL file is required
+	strictcrlpolicy=%!CRL_STRICTNESS!%
+	# disable CRL caching
+	cachecrls=no
+	# pluto is the IKEv1 daemon, so not required
+	plutostart=no
+
+# default config to be applied to all conn sections
+conn %default
+	# prevent negotiation of any other protocols
+	ike=aes128-sha1-modp1024!
+	esp=aes128-sha1!
+	# very long lifetimes, GW should initiate keys much more often
+	# - we actually want these to be longer but there is a bug
+	#   which limits this to the value in ms which fits into a
+	#   32-bit signed int.
+	ikelifetime=23d
+	keylife=22d
+	# rekey margin, initiate rekey this long before expiry
+	rekeymargin=10m
+	# only try keying once, failures will be handled externally
+	keyingtries=1
+	# must use IKEv2
+	keyexchange=ikev2
+	mobike=no
+	# by default bring up all connections when strongSwan is started
+	auto=add
+	# no inbound access to AP
+	lefthostaccess=no
+	# dead peer detection, restart tunnel when it dies
+	dpdaction=restart
+	# time in seconds between R_U_THERE/INFORMATIONAL exchanges
+	dpddelay=%!DPD_DELAY!%
+	# usually we don't initiate rekeys, but if for some reason the GW has
+	# not and out SA is about to expire then we need to rekey it
+	rekey=yes
+	# rekey does not reauth
+	reauth=no
+	# initial value for IKEv2 retransmission timer
+	retransmit_timer=%!RETRANS_TIMER!%
+	# number of retransmissions before aborting the SA
+	retransmit_count=%!RETRANS_COUNT!%
+	# force UDP encapsulation
+	forceencaps=yes
+
+
+conn home
+	# tell SecGW our IP is that of our default route
+	left=%defaultroute
+	# virtual IP is assigned by the SecGW
+	leftsourceip=%modeconfig
+	# AP's certificate
+	leftcert=3gap-cert.pem
+	# add iptables rules when tunnel state changes
+	leftfirewall=yes
+	rightfirewall=yes
+	# address of SecGW
+	right=%!GATEWAY_ADDRESS!%
+	# rightid is used to verify the certificate received from the gateway
+	# matches the address used to access it.
+	%!RIGHT_ID!%
+	# subnet we expect to reach through tunnel, this may be narrowed
+	# by the SecGW
+	rightsubnet=%!RIGHT_SUBNET!%

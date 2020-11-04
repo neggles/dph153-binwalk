@@ -1,0 +1,4 @@
+#
+# Additional diag files to be uploaded
+#
+/var/ipaccess/cisco/dslg_cur_cfg.xml.gz

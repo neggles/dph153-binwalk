@@ -1,0 +1,48 @@
+#!/bin/sh
+
+IPTABLES=/usr/sbin/iptables
+INTIF=lo
+EXTIF=`cat /tmp/wanif`
+# allow incoming TCP connections on these ports
+#TCP_ACCEPT_EXT_IN="22"
+# allow outgoing TCP connections on these ports
+#TCP_ACCEPT_EXT_OUT="22,80,443"
+# allow outgoing UDP connections on these ports
+#UDP_ACCEPT_EXT_OUT="53,67,68,123,500,4500"
+
+# allow existing connections in both directions
+$IPTABLES -A INPUT  -m state --state ESTABLISHED,RELATED -j ACCEPT
+# TODO: for now all traffic originating from AP is allowed, remove
+#       this and restore specific port based holes
+$IPTABLES -A OUTPUT -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+#$IPTABLES -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# TCP incoming external
+#$IPTABLES -A INPUT -i $EXTIF -p tcp -m state --state NEW -m multiport --dports $TCP_ACCEPT_EXT_IN -j ACCEPT
+# TCP outgoing external
+#$IPTABLES -A OUTPUT -o $EXTIF -p tcp -m state --state NEW -m multiport --dports $TCP_ACCEPT_EXT_OUT -j ACCEPT
+# UDP outgoing external
+#$IPTABLES -A OUTPUT -o $EXTIF -p udp -m state --state NEW -m multiport --dports $UDP_ACCEPT_EXT_OUT -j ACCEPT
+
+
+# allow ICMP at a limited rate
+$IPTABLES -A INPUT  -p icmp -m limit --limit 10/second -j ACCEPT
+$IPTABLES -A OUTPUT -p icmp -m limit --limit 10/second -j ACCEPT
+
+# allow ESP in and out
+$IPTABLES -A INPUT  -i $EXTIF -p esp -j ACCEPT
+$IPTABLES -A OUTPUT -o $EXTIF -p esp -j ACCEPT
+
+# everything allowed on local interface
+$IPTABLES -A INPUT  -i $INTIF -j ACCEPT
+$IPTABLES -A OUTPUT -o $INTIF -j ACCEPT
+
+# log everything else
+#$IPTABLES -A INPUT  -m limit --limit 3/minute --limit-burst 3 -j LOG --log-level DEBUG --log-prefix "IPT INPUT packet died: "
+#$IPTABLES -A OUTPUT -m limit --limit 3/minute --limit-burst 3 -j LOG --log-level DEBUG --log-prefix "IPT OUTPUT packet died: "
+
+# reject what's left
+$IPTABLES -A INPUT   -j REJECT
+$IPTABLES -A OUTPUT  -j REJECT
+$IPTABLES -A FORWARD -j REJECT
+

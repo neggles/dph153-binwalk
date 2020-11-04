@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soniXlog xmlns:sl="http://www.w3.org/2001/XMLSchema" xmlns:ns1="http://www.ipaccess.com/soniXLog" >
+<sl:fileHeader fileFormatVersion="ip.access SONIX V1.0" vendorName="ip.access" logType="cdr" beginTime="2016-08-11T15:23:12Z" beginSequenceNo="246" elementDn="105F49-0014229335" elementType="3G AP" userLabel="105F49-0014229335" swVersion="Kernel: 224_002 240.0, Filesys: 224F004 579.11.142C900_93">
+</sl:fileHeader>
+ <sl:rawLog>
+246, Thu Aug 11 2016 15:23:12, 0x8483d, 11/08/2016 15:22:48, 00:00:24, 5, 1, 1, 1, 0, 0x00006000, NORMAL, 0, 0,0,0, 0, 0
+247, Fri Aug 12 2016 12:23:10, PS_CALL_SUMMARY, 11/08/2016 15:22:47, 12/08/2016 12:23:10, 100, 91, 0, 9, 00:00:14, 00:02:01, 00:00:01
+248, Fri Aug 12 2016 15:43:13, 0x84836, 12/08/2016 15:37:12, 00:05:56, 0, 1, 0, 1, 1, 0x00000003, NORMAL, 0, 2,6,0, 0, 0
+249, Fri Aug 12 2016 19:49:57, 0x84832, 12/08/2016 19:48:21, 00:01:31, 0, 1, 0, 1, 1, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+250, Fri Aug 12 2016 19:55:13, 0x84833, 12/08/2016 19:54:37, 00:00:36, 0, 1, 0, 0, 0, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+251, Sat Aug 13 2016 02:38:14, PS_CALL_SUMMARY, 12/08/2016 12:23:37, 13/08/2016 02:38:14, 100, 89, 0, 11, 24:59:14, 838:38:30, 00:00:02
+252, Sat Aug 13 2016 17:49:44, PS_CALL_SUMMARY, 13/08/2016 02:51:33, 13/08/2016 17:49:44, 100, 96, 0, 4, 00:00:13, 00:01:01, 00:00:02
+253, Sat Aug 13 2016 18:29:24, 0x8483c, 09/07/2016 00:41:19, 00:00:31, 2, 1, 1, 2, 1, 0x00006000, NORMAL, 0, 0,0,0, 0, 0
+254, Sat Aug 13 2016 18:29:28, 0x8483c, 13/08/2016 18:28:53, 00:00:35, 2, 1, 1, 2, 1, 0x00006000, RL_FAILURE, 0, 0,0,0, 0, 0
+255, Sat Aug 13 2016 20:06:36, 0x84830, 13/08/2016 20:05:05, 00:01:31, 5, 1, 0, 2, 2, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+256, Sun Aug 14 2016 10:12:33, PS_CALL_SUMMARY, 13/08/2016 18:04:21, 14/08/2016 10:12:33, 100, 89, 1, 10, 08:38:51, 864:17:37, 00:00:02
+257, Mon Aug 15 2016 12:46:12, PS_CALL_SUMMARY, 14/08/2016 10:15:03, 15/08/2016 12:46:12, 100, 96, 0, 4, 00:00:17, 00:01:31, 00:00:02
+258, Tue Aug 16 2016 12:05:25, PS_CALL_SUMMARY, 15/08/2016 12:50:51, 16/08/2016 12:05:25, 100, 94, 0, 6, 00:00:13, 00:01:01, 00:00:02
+259, Wed Aug 17 2016 13:34:50, PS_CALL_SUMMARY, 16/08/2016 12:14:00, 17/08/2016 13:34:50, 100, 96, 0, 4, 00:00:18, 00:01:02, 00:00:02
+260, Wed Aug 17 2016 14:34:25, 0x84831, 17/08/2016 14:32:55, 00:01:30, 5, 1, 0, 2, 2, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+261, Thu Aug 18 2016 12:29:27, PS_CALL_SUMMARY, 17/08/2016 13:50:20, 18/08/2016 12:29:27, 100, 90, 0, 10, 00:00:21, 00:03:30, 00:00:03
+262, Fri Aug 19 2016 05:49:51, PS_CALL_SUMMARY, 18/08/2016 12:29:40, 19/08/2016 05:49:51, 100, 91, 0, 9, 09:49:46, 982:33:31, 00:00:01
+263, Fri Aug 19 2016 15:58:26, 0x84830, 09/07/2016 00:41:19, 00:00:23, 5, 1, 1, 1, 0, 0x00006000, NORMAL, 0, 0,0,0, 0, 0
+264, Fri Aug 19 2016 15:58:27, 0x84830, 19/08/2016 15:58:03, 00:00:24, 5, 1, 1, 1, 0, 0x00006000, NORMAL, 0, 0,0,0, 0, 0
+265, Sat Aug 20 2016 02:44:06, PS_CALL_SUMMARY, 19/08/2016 05:49:53, 20/08/2016 02:44:06, 100, 95, 0, 5, 00:00:16, 00:01:13, 00:00:01
+266, Sat Aug 20 2016 21:40:03, PS_CALL_SUMMARY, 20/08/2016 02:52:52, 20/08/2016 21:40:03, 100, 95, 1, 4, 20:34:49, 1028:50:06, 00:00:02
+267, Sun Aug 21 2016 20:15:34, PS_CALL_SUMMARY, 21/08/2016 03:35:57, 21/08/2016 20:15:34, 100, 95, 0, 5, 00:00:13, 00:01:30, 00:00:01
+268, Mon Aug 22 2016 12:33:55, PS_CALL_SUMMARY, 21/08/2016 20:15:39, 22/08/2016 12:33:55, 100, 94, 0, 6, 00:00:15, 00:01:10, 00:00:01
+269, Tue Aug 23 2016 12:12:52, PS_CALL_SUMMARY, 22/08/2016 12:40:52, 23/08/2016 12:12:52, 100, 99, 0, 1, 00:00:12, 00:01:35, 00:00:01
+270, Wed Aug 24 2016 09:54:19, PS_CALL_SUMMARY, 23/08/2016 12:13:25, 24/08/2016 09:54:19, 100, 82, 0, 18, 11:02:18, 1103:15:37, 00:00:03
+271, Thu Aug 25 2016 01:12:29, PS_CALL_SUMMARY, 24/08/2016 09:56:14, 25/08/2016 01:12:29, 100, 90, 0, 10, 00:00:15, 00:02:01, 00:00:02
+272, Fri Aug 26 2016 04:24:20, PS_CALL_SUMMARY, 25/08/2016 01:16:50, 26/08/2016 04:24:20, 100, 91, 0, 9, 00:00:12, 00:01:01, 00:00:02
+273, Fri Aug 26 2016 15:53:25, PS_CALL_SUMMARY, 26/08/2016 04:24:26, 26/08/2016 15:53:25, 100, 94, 0, 6, 00:00:14, 00:01:06, 00:00:02
+274, Sat Aug 27 2016 13:20:19, PS_CALL_SUMMARY, 26/08/2016 21:16:28, 27/08/2016 13:20:19, 100, 95, 0, 5, 00:00:14, 00:01:12, 00:00:02
+275, Sun Aug 28 2016 05:39:11, PS_CALL_SUMMARY, 27/08/2016 13:21:21, 28/08/2016 05:39:11, 100, 95, 0, 5, 00:00:12, 00:01:01, 00:00:03
+276, Sun Aug 28 2016 21:10:29, 0x8483d, 28/08/2016 21:09:32, 00:00:57, 5, 1, 0, 1, 1, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+277, Mon Aug 29 2016 00:58:20, PS_CALL_SUMMARY, 28/08/2016 05:48:12, 29/08/2016 00:58:20, 100, 96, 0, 4, 12:10:09, 1216:32:02, 00:00:01
+278, Tue Aug 30 2016 00:11:38, PS_CALL_SUMMARY, 29/08/2016 01:13:24, 30/08/2016 00:11:38, 100, 97, 0, 3, 00:00:17, 00:01:30, 00:00:03
+279, Tue Aug 30 2016 12:11:25, 0x84836, 09/07/2016 00:41:20, 00:00:23, 5, 1, 1, 1, 0, 0x00006000, NORMAL, 0, 0,0,0, 0, 0
+280, Tue Aug 30 2016 12:11:28, 0x84836, 30/08/2016 12:11:02, 00:00:26, 5, 1, 1, 1, 0, 0x00006000, NORMAL, 0, 0,0,0, 0, 0
+281, Tue Aug 30 2016 15:37:11, PS_CALL_SUMMARY, 30/08/2016 00:26:51, 30/08/2016 15:37:11, 100, 99, 0, 1, 00:00:09, 00:01:00, 00:00:00
+282, Wed Aug 31 2016 21:30:40, PS_CALL_SUMMARY, 30/08/2016 15:37:58, 31/08/2016 21:30:40, 100, 95, 0, 5, 12:42:38, 1270:39:44, 00:00:03
+283, Thu Sep 01 2016 10:50:49, PS_CALL_SUMMARY, 31/08/2016 21:36:11, 01/09/2016 10:50:49, 100, 97, 0, 3, 00:00:12, 00:01:02, 00:00:00
+284, Fri Sep 02 2016 02:16:40, 0x84831, 02/09/2016 02:14:59, 00:01:41, 5, 1, 0, 2, 2, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+285, Fri Sep 02 2016 03:12:20, 0x84833, 02/09/2016 03:11:49, 00:00:31, 5, 1, 0, 0, 0, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+286, Fri Sep 02 2016 06:59:52, PS_CALL_SUMMARY, 01/09/2016 11:00:55, 02/09/2016 06:59:52, 100, 96, 0, 4, 26:23:04, 1319:38:05, 00:00:02
+287, Fri Sep 02 2016 20:59:55, 0x8483b, 02/09/2016 20:54:56, 00:04:59, 0, 1, 0, 1, 1, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+288, Fri Sep 02 2016 21:10:32, 0x8483c, 02/09/2016 21:10:27, 00:00:05, 5, 1, 1, 1, 0, 0x00006000, NORMAL, 0, 0,0,0, 0, 0
+289, Fri Sep 02 2016 23:36:38, PS_CALL_SUMMARY, 02/09/2016 07:02:46, 02/09/2016 23:36:38, 100, 92, 0, 8, 13:24:03, 1339:40:00, 00:00:02
+290, Sat Sep 03 2016 12:36:44, PS_CALL_SUMMARY, 02/09/2016 23:36:47, 03/09/2016 12:36:44, 100, 95, 0, 5, 00:00:14, 00:02:00, 00:00:02
+291, Sun Sep 04 2016 05:12:40, PS_CALL_SUMMARY, 03/09/2016 12:42:37, 04/09/2016 05:12:40, 100, 95, 0, 5, 00:00:13, 00:01:01, 00:00:02
+292, Sun Sep 04 2016 21:12:06, PS_CALL_SUMMARY, 04/09/2016 05:15:32, 04/09/2016 21:12:06, 100, 99, 0, 1, 00:00:08, 00:01:03, 00:00:00
+293, Mon Sep 05 2016 14:16:53, PS_CALL_SUMMARY, 04/09/2016 21:13:17, 05/09/2016 14:16:53, 100, 96, 0, 4, 00:00:16, 00:01:50, 00:00:02
+294, Tue Sep 06 2016 03:49:56, PS_CALL_SUMMARY, 05/09/2016 14:17:03, 06/09/2016 03:49:56, 100, 96, 0, 4, 14:04:29, 1407:10:25, 00:00:01
+295, Tue Sep 06 2016 22:44:31, PS_CALL_SUMMARY, 06/09/2016 03:50:00, 06/09/2016 22:44:31, 100, 97, 0, 3, 14:23:06, 1438:03:11, 00:00:02
+296, Wed Sep 07 2016 14:21:47, PS_CALL_SUMMARY, 06/09/2016 22:50:09, 07/09/2016 14:21:47, 100, 96, 0, 4, 00:00:15, 00:01:07, 00:00:03
+297, Thu Sep 08 2016 13:20:00, PS_CALL_SUMMARY, 07/09/2016 14:32:02, 08/09/2016 13:20:00, 100, 89, 0, 11, 00:00:22, 00:03:00, 00:00:02
+298, Thu Sep 08 2016 14:34:01, 0x84839, 08/09/2016 14:31:38, 00:02:23, 0, 1, 0, 0, 0, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+299, Fri Sep 09 2016 15:22:47, PS_CALL_SUMMARY, 08/09/2016 13:20:50, 09/09/2016 15:22:47, 100, 93, 0, 7, 00:00:16, 00:02:23, 00:00:02
+300, Sat Sep 10 2016 12:20:17, PS_CALL_SUMMARY, 09/09/2016 15:23:53, 10/09/2016 12:20:17, 100, 95, 0, 5, 00:00:13, 00:02:30, 00:00:02
+301, Sun Sep 11 2016 02:20:04, PS_CALL_SUMMARY, 10/09/2016 12:22:20, 11/09/2016 02:20:04, 100, 84, 0, 16, 46:00:13, 1534:59:07, 00:00:01
+302, Sun Sep 11 2016 23:38:18, PS_CALL_SUMMARY, 11/09/2016 02:34:20, 11/09/2016 23:38:18, 100, 98, 0, 2, 15:23:56, 1539:36:24, 00:00:01
+303, Mon Sep 12 2016 12:59:06, PS_CALL_SUMMARY, 11/09/2016 23:41:11, 12/09/2016 12:59:06, 100, 90, 0, 10, 15:36:29, 1560:20:38, 00:00:03
+304, Mon Sep 12 2016 22:25:55, 0x8483d, 09/07/2016 00:41:20, 00:00:23, 5, 1, 1, 1, 0, 0x00006000, NORMAL, 0, 0,0,0, 0, 0
+305, Mon Sep 12 2016 22:25:57, 0x8483d, 12/09/2016 22:25:32, 00:00:25, 5, 1, 1, 1, 0, 0x00006000, NORMAL, 0, 0,0,0, 0, 0
+306, Mon Sep 12 2016 22:28:14, 0x84830, 12/09/2016 22:26:56, 00:01:18, 2, 1, 0, 2, 2, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+61, Tue Sep 13 2016 00:00:06, Restart detected, restoring last active logs
+62, Tue Sep 13 2016 00:00:05, Restart detected after power outage, restoring last active log from backup
+63, Fri Oct 07 2016 00:00:04, Restart detected after power outage, restoring last active log from backup
+64, Fri Oct 07 2016 15:00:05, Restart detected after power outage, restoring last active log from backup
+65, Sat Oct 08 2016 08:00:05, Restart detected after power outage, restoring last active log from backup
+66, Tue Dec 27 2016 02:00:05, Restart detected after power outage, restoring last active log from backup
+67, Sat Jan 14 2017 01:00:05, Restart detected after power outage, restoring last active log from backup
+68, Wed Mar 08 2017 22:00:04, Restart detected after power outage, restoring last active log from backup
+69, Wed Mar 08 2017 22:00:05, Restart detected after power outage, restoring last active log from backup
+70, Wed Mar 08 2017 22:00:05, Restart detected after power outage, restoring last active log from backup
+71, Tue Apr 18 2017 15:00:04, Restart detected after power outage, restoring last active log from backup
+72, Thu Apr 20 2017 07:00:05, Restart detected after power outage, restoring last active log from backup
+73, Mon Jun 05 2017 06:00:04, Restart detected after power outage, restoring last active log from backup
+74, Mon Jul 24 2017 02:00:05, Restart detected after power outage, restoring last active log from backup
+75, Sat Jul 29 2017 17:00:05, Restart detected after power outage, restoring last active log from backup
+76, Sat Jul 29 2017 17:00:04, Restart detected after power outage, restoring last active log from backup
+77, Fri Sep 01 2017 18:00:05, Restart detected after power outage, restoring last active log from backup
+78, Tue Sep 12 2017 07:00:04, Restart detected after power outage, restoring last active log from backup
+79, Wed Nov 01 2017 14:00:05, Restart detected after power outage, restoring last active log from backup
+80, Thu Nov 02 2017 23:00:05, Restart detected after power outage, restoring last active log from backup
+81, Fri Nov 03 2017 01:00:04, Restart detected after power outage, restoring last active log from backup
+82, Fri Nov 03 2017 04:00:04, Restart detected after power outage, restoring last active log from backup
+83, Sat Feb 24 2018 18:00:04, Restart detected after power outage, restoring last active log from backup
+84, Sat Feb 24 2018 18:00:04, Restart detected after power outage, restoring last active log from backup
+85, Fri Mar 02 2018 17:00:04, Restart detected after power outage, restoring last active log from backup
+86, Sat May 12 2018 00:00:04, Restart detected after power outage, restoring last active log from backup
+87, Sat Jun 02 2018 03:00:04, Restart detected after power outage, restoring last active log from backup
+88, Tue Jul 24 2018 09:00:04, Restart detected after power outage, restoring last active log from backup
+89, Wed Jul 25 2018 23:00:05, Restart detected after power outage, restoring last active log from backup
+90, Sat Sep 15 2018 10:00:04, Restart detected after power outage, restoring last active log from backup
+91, Sat Sep 15 2018 22:00:05, Restart detected after power outage, restoring last active log from backup
+92, Fri Sep 21 2018 02:00:04, Restart detected after power outage, restoring last active log from backup
+93, Thu Oct 11 2018 17:00:04, Restart detected after power outage, restoring last active log from backup
+94, Thu Oct 11 2018 17:00:05, Restart detected after power outage, restoring last active log from backup
+95, Sat Oct 13 2018 00:00:04, Restart detected after power outage, restoring last active log from backup
+96, Sat Oct 13 2018 18:01:09, PS_CALL_SUMMARY, 13/10/2018 00:13:44, 13/10/2018 18:01:09, 100, 76, 0, 24, 00:11:06, 17:57:33, 00:00:02
+97, Sun Oct 14 2018 01:52:39, PS_CALL_SUMMARY, 13/10/2018 18:04:28, 14/10/2018 01:52:39, 100, 93, 0, 7, 00:00:09, 00:01:31, 00:00:03
+98, Sun Oct 14 2018 20:45:59, PS_CALL_SUMMARY, 14/10/2018 01:52:42, 14/10/2018 20:45:59, 100, 81, 0, 19, 00:00:17, 00:02:00, 00:00:02
+99, Mon Oct 15 2018 05:59:23, PS_CALL_SUMMARY, 14/10/2018 20:58:29, 15/10/2018 05:59:23, 100, 88, 0, 12, 00:00:11, 00:01:30, 00:00:01
+100, Mon Oct 15 2018 23:27:49, 0x8483c, 15/10/2018 23:27:27, 00:00:22, 5, 1, 0, 0, 0, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+101, Tue Oct 16 2018 03:05:55, PS_CALL_SUMMARY, 15/10/2018 05:59:31, 16/10/2018 03:05:55, 100, 73, 0, 27, 00:44:05, 72:52:24, 00:00:03
+102, Tue Oct 16 2018 23:25:03, 0x84837, 13/10/2018 00:02:49, 00:00:23, 5, 1, 1, 1, 0, 0x00006000, NORMAL, 0, 0,0,0, 0, 0
+103, Tue Oct 16 2018 23:25:04, 0x84837, 16/10/2018 23:24:40, 00:00:24, 5, 1, 1, 1, 0, 0x00006000, NORMAL, 0, 0,0,0, 0, 0
+104, Tue Oct 16 2018 23:25:27, 0x84838, 16/10/2018 23:25:11, 00:00:16, 5, 1, 0, 0, 0, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+105, Wed Oct 17 2018 01:01:27, PS_CALL_SUMMARY, 16/10/2018 03:15:00, 17/10/2018 01:01:27, 100, 85, 0, 15, 00:00:15, 00:02:00, 00:00:01
+106, Wed Oct 17 2018 12:07:35, PS_CALL_SUMMARY, 17/10/2018 01:01:33, 17/10/2018 12:07:35, 100, 93, 0, 7, 00:00:09, 00:01:01, 00:00:01
+107, Wed Oct 17 2018 22:58:21, 0x8483d, 17/10/2018 22:57:59, 00:00:22, 5, 1, 0, 0, 0, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+108, Wed Oct 17 2018 22:58:50, 0x8483e, 17/10/2018 22:58:28, 00:00:22, 5, 1, 0, 0, 0, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+109, Thu Oct 18 2018 06:18:37, PS_CALL_SUMMARY, 17/10/2018 12:09:17, 18/10/2018 06:18:37, 100, 72, 0, 28, 01:11:21, 118:15:57, 00:00:03
+110, Thu Oct 18 2018 13:50:26, 0x84832, 18/10/2018 13:50:19, 00:00:07, 4, 1, 0, 1, 1, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+111, Thu Oct 18 2018 13:59:03, 0x84834, 18/10/2018 13:51:05, 00:07:58, 4, 1, 0, 2, 2, 0x00000003, NORMAL, 0, 0,5,0, 0, 0
+112, Fri Oct 19 2018 05:30:49, PS_CALL_SUMMARY, 18/10/2018 06:31:57, 19/10/2018 05:30:49, 100, 71, 0, 29, 01:26:38, 143:39:19, 00:00:02
+113, Fri Oct 19 2018 14:06:11, PS_CALL_SUMMARY, 19/10/2018 05:32:04, 19/10/2018 14:06:11, 100, 88, 0, 12, 00:00:15, 00:02:30, 00:00:03
+114, Sat Oct 20 2018 06:16:13, PS_CALL_SUMMARY, 19/10/2018 14:08:16, 20/10/2018 06:16:13, 100, 86, 0, 14, 03:15:56, 166:35:24, 00:00:03
+115, Sat Oct 20 2018 17:35:13, PS_CALL_SUMMARY, 20/10/2018 06:26:19, 20/10/2018 17:35:13, 100, 85, 0, 15, 00:00:14, 00:01:31, 00:00:03
+116, Sat Oct 20 2018 22:11:06, PS_CALL_SUMMARY, 20/10/2018 17:45:14, 20/10/2018 22:11:06, 100, 99, 0, 1, 00:00:05, 00:01:01, 00:00:01
+117, Sat Oct 20 2018 23:10:05, 0x84838, 20/10/2018 23:09:43, 00:00:22, 5, 1, 0, 0, 0, 0x00000003, NORMAL, 0, 0,0,0, 0, 0
+118, Sat Oct 20 2018 23:12:09, 0x84837, 20/10/2018 23:12:05, 00:01:04, 0, 1, 1, 2, 1, 0x00006000, NORMAL, 0, 0,0,0, 0, 0
+119, Sun Oct 21 2018 14:00:06, Restart detected, restoring last active logs

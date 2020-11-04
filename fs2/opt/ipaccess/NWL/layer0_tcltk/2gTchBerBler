@@ -1,0 +1,332 @@
+#!/bin/sh
+  # \
+exec tclsh "$0" "$@"
+
+########################################################################################
+#
+#    File: 2gTchBerBler
+#
+set ::version "0.1"
+#
+#---------------------------------------------------------------------------------------
+#
+# Script file to get and calculate the running GSM TCH-FS Class 1a (FER), Class1b (BER)
+# and Class2 (BER) errors.
+#
+########################################################################################
+
+
+#---------------------------------------------------------------------------------------------------------
+#
+#     resetFunc 
+#
+# This function calls the picoifapp LUA script to setup the AP into Agilent / Keithley mode
+# [Only difference is the slot number to listen on, Slot 2 for Agilent, 4 for Keithley]
+# It then calls TchBerBler.tcl to start TCH test mode
+proc resetFunc {} {
+  puts "Resetting"
+  exec "/opt/ipaccess/NWL/layer0_tcltk/TchBerBler.tcl" $::host
+}
+
+#----------------------------------------------------------------------------------------------
+#
+#    getBerBlerCounts
+#
+# Returns the current BER and BLER counts.  The data is returned as a list of 4 values.
+# List contains {BitCount, BitErrors, BlockCount, BlockErrors}
+#
+# NWL_DTCS package contains calls to various DTCS functions. Present in NWL_DTCS.tcl
+
+#package require NWL_DTCS
+#namespace import ::NWL_DTCS::*
+
+#package require NWL_CTRL_UTILS
+#namespace import ::NWL_CTRL_UTILS::*
+
+#set host [lindex $argv 0]
+#set loops [lindex $argv 1]
+
+proc gettchbrp_stats { } {
+    set finish      0
+    set i           0
+    set num_blks    0
+    set blk_errors  0
+    set bler        0
+    set class1_ber 0
+    set class2_ber 0
+    set num_class1_bits 0
+    set num_class1_errors 0
+    set num_class2_bits 0
+    set num_class2_errors 0
+    set response    ""
+
+    set tchbrp_op [exec "/opt/ipaccess/NWL/layer0_tcltk/ReturnTchBrp.tcl" $::host]
+    set len_array   [llength $tchbrp_op]
+
+    if { $len_array == 0} {
+        puts "No output returned from TchBrp script!"
+        exit 
+    }
+
+    while { $finish != 7 } {
+            
+        set data [format "0x%08x" [lindex $tchbrp_op $i]]
+
+        if { $data == 0x00086003 } {
+            set num_class1_bits   [format %u [lindex $tchbrp_op [expr ($i+1)]]]
+            set num_class1_errors [format %u [lindex $tchbrp_op [expr ($i+2)]]]
+            if {$num_class1_bits != 0} {
+                set class1_ber [format %1.6f [expr 100 * (double($num_class1_errors) / double($num_class1_bits))]]
+            } else {
+                set class1_ber -99
+            }
+            set finish [expr $finish + 1]
+        }
+        
+        if { $data == 0x00086803 } {
+            set num_class2_bits   [format %u [lindex $tchbrp_op [expr ($i+1)]]]
+            set num_class2_errors [format %u [lindex $tchbrp_op [expr ($i+2)]]]
+            if {$num_class2_bits != 0} {
+                set class2_ber [format %1.6f [expr 100 * (double($num_class2_errors) / double($num_class2_bits))]]
+            } else {
+                set class2_ber -99 
+            }
+            set finish [expr $finish + 2]
+        }
+
+        if { $data == 0x00086103 } {
+            set num_blks       [format %u [lindex $tchbrp_op [expr ($i+1)]]]
+            set blk_errors     [format %u [lindex $tchbrp_op [expr ($i+2)]]]
+            if {$num_blks != 0} {
+                set bler       [format %1.6f [expr 100 * (double($blk_errors) / double($num_blks))]]
+            } else {
+                set bler -99 
+            } 
+            set finish [expr $finish + 4]
+        }
+        
+        set i [expr $i + 1]
+
+        if { $i == $len_array } {
+            break
+        }
+    }
+
+    if {$finish != 7 && $::verbose > 0} {
+      puts "Failed to get all components $finish"
+    }  
+    set response [lappend $response $num_blks $blk_errors $bler $num_class1_bits $num_class1_errors $class1_ber $num_class2_bits $num_class2_errors $class2_ber $finish]
+
+#set response [format "%u %u %s %u %u %s %u %u %s" $num_blks $blk_errors $bler $num_class1_bits $num_class1_errors $class1_ber $num_class2_bits $num_class2_errors $class2_ber]
+    return $response
+}
+
+
+proc getBerBlerCounts {} {
+    
+    set retryCount 0
+    set oldnblks   0
+    set oldnc1     0
+    set oldnc2     0    
+    
+    while {$retryCount < 10} {
+        set stats [gettchbrp_stats]
+        set valid [expr [lindex $stats 9]] 
+        set nblks [expr [lindex $stats 0]]
+        set nc1   [expr [lindex $stats 3]]
+        set nc2   [expr [lindex $stats 6]]
+
+        if { $::verbose > 0 } {
+            puts "valid: $valid, nBlks: $nblks, nc1: $nc1, nc2: $nc2"
+        } 
+        if { $valid == 7 } {
+            # Check all three counts have incremented (i.e. we are sync'd)
+            if { $retryCount > 1} { 
+                set deltaBlks [expr $nblks - $oldnblks ]
+                set deltaC1   [expr $nc1 - $oldnc1 ]
+                set deltaC2   [expr $nc2 - $oldnc2 ]
+                
+                if { $::verbose > 0 } {
+                    puts "deltaBlks: $deltaBlks, deltaC1: $deltaC1, deltaC2: $deltaC2"
+                }
+ 
+                if  { [expr ($deltaBlks > 20) && ($deltaC1 > 20) && ($deltaC2 > 20)] } {                    
+                    break
+                }
+            }
+            set oldnblks  $nblks
+            set oldnc1    $nc1
+            set oldnc2    $nc2    
+        }
+        incr retryCount
+    }
+                
+    if {$retryCount >= 10} then {
+        puts "Could not get sensible data from board - try resetting it! - BER output:"
+        puts $stats
+        exit
+    }
+
+    return $stats
+}
+
+
+#---------------------------------------------------------------------------------------------------------
+#
+#     processOneReading
+#
+# Function to make a single reading from the hardware and to process that data.  How the data is
+# processed depends on the action requested.  If reset, then the reading is treaded as the base data
+# and saved for future use.  If update, then the base values are subtracted and the BER, BLER values
+# calculated.
+#
+proc processOneReading {count} {
+    # Gather one set of data
+    set stats [getBerBlerCounts]
+    # If using CSV output then put a header as the first line
+    if {$::csv > 0  && $count == 1 && $::titles > 0} then {
+        puts "Reading,Frame Count,Frame Errors,FER,Class 1b Bit Count,Class 1b Bit Errors,Class 1b BER,Class 2 Bit Count,Class 2 Bit Errors,Class 2 BER"
+    } elseif {$::html > 0  && $count == 1 && $::titles > 0} then {
+        puts "<tr bgcolor=\"#88CC88\">"
+        puts "<th align=\"center\">Reading</th>"
+        puts "<th align=\"center\">Frame Count</th>"
+        puts "<th align=\"center\">Frame Errors</th>"
+        puts "<th align=\"center\">FER</th>"
+        puts "<th align=\"center\">Class 1b Bit Count</th>"
+        puts "<th align=\"center\">Class 1b Bit Errors</th>"
+        puts "<th align=\"center\">Class 1b BER</th>"
+        puts "<th align=\"center\">Class 2 Bit Count</th>"
+        puts "<th align=\"center\">Class 2 Bit Errors</th>"
+        puts "<th align=\"center\">Class 2 BER</th>"
+        puts "</tr>" 
+    }
+
+    set nblks     [lindex $stats 0]
+    set nblkErrs  [lindex $stats 1]
+    set bler      [lindex $stats 2]
+     
+    set nc1       [lindex $stats 3]
+    set nc1Errs   [lindex $stats 4]
+    set c1ber     [lindex $stats 5]
+
+    set nc2       [lindex $stats 6]
+    set nc2Errs   [lindex $stats 7]
+    set c2ber     [lindex $stats 8]
+  
+
+    if {$::csv > 0} then {
+        puts "$count,$nblks,$nblkErrs,$bler%,$nc1,$nc1Errs,$c1ber%,$nc2,$nc2Errs,$c2ber%"
+    } elseif {$::html > 0} then {
+        puts "<tr bgcolor=\"#FFFFFF\">"
+        puts "  <td align=\"center\">$count</td>"
+        puts "  <td align=\"center\">$nblks</td>"
+        puts "  <td align=\"center\">$nblkErrs</td>"
+        puts "  <td align=\"center\">$bler %</td>"
+        puts "  <td align=\"center\">$nc1</td>"
+        puts "  <td align=\"center\">$nc1Errs</td>"
+        puts "  <td align=\"center\">$c1ber %</td>"
+        puts "  <td align=\"center\">$nc2</td>"
+        puts "  <td align=\"center\">$nc2Errs</td>"
+        puts "  <td align=\"center\">$c2ber %</td></tr>"
+    } else {
+        puts "Blks: $nblks Errors: $nblkErrs BLER: $bler % | Cla bits: $nc1 Errors: $nc1Errs BER: $c1ber % | C2 bits: $nc2 Errors: $nc2Errs BER: $c2ber %"
+    }
+ 
+}
+
+
+
+########################################################################################
+#
+#   Start of main program
+#
+#
+
+# Check the command line arguments
+set ::host    "127.0.0.1"
+set ::action  "update"
+
+# Update timeout in milliseconds
+set ::timeout 1000
+# Default to minimum output
+set ::verbose 0
+# Default to text output not CSV
+set ::csv     0
+# Default to text output not HTML
+set ::html    0
+# Default to not displaying CSV titles
+set ::titles  0
+# Number of readings
+set ::count   1
+
+
+for {set i 0} {$i < [llength $argv]} {incr i} {
+    set arg [lindex $argv $i]
+    if {$arg == "-h" || $arg == "-host"} then {
+        incr i
+        set ::host [lindex $argv $i]
+    } elseif {$arg == "-v" || $arg == "-verbose"} then {
+        set ::verbose 1
+    } elseif {$arg == "-t" || $arg == "-title"} then {
+        set ::titles 1
+    } elseif {$arg == "-c" || $arg == "-csv"} then {
+        set ::csv 1
+    } elseif {$arg == "-m" || $arg == "-html"} then {
+        set ::html 1
+    } elseif {$arg == "-l" || $arg == "-limit"} then {
+        incr i
+        set ::count [lindex $argv $i]
+    } elseif {$arg == "update" || \
+              $arg == "reset"} then {
+        set ::action $arg
+    } elseif {$arg == "auto_refresh" || \
+              $arg == "auto"} then {
+        set ::action "auto_refresh"
+        if {[llength $argv] > [expr $i+1] } then {
+            incr i
+            set ::timeout [lindex $argv $i]
+        }
+    } else {
+        # Unrecognised command line option, print usage help and exit
+        puts "usage: $argv0 \[<options>\] \[reset|update|auto_refresh \[<timeout>\]\]"
+        puts "   Defaults: action = update"
+        puts "             <timeout> = 1000 (milliseconds)"
+        puts "   Options are zero or more of:"
+        puts "    -h |  -host <host address> - Host address of the 3GAP (default 127.0.0.1)."
+        puts "    -c |  -csv - Output the data in CSV format, useful with auto_refresh."
+        puts "    -m |  -html - Output the data in HTML format, useful with auto_refresh."
+        puts "    -v |  -verbose - Verbose output."
+        puts "    -l |  -limit - Use with auto_refresh to define the number of data measurements."
+        puts "               Default 0 meaning no limit."
+        exit
+    }
+}
+if {$::verbose > 0} then {
+    puts "$argv0 - version $::version"
+    puts "Host $::host Action $::action Repeat Interval $::timeout mSec"
+    puts ""
+}
+
+if {$::html > 0} then {
+    puts "<table border=\"1\" bgcolor=\"#000000\">"
+}
+
+if {$::action == "auto_refresh"} then {
+    set measurement 1
+    while {$count > 0} {
+        processOneReading $measurement
+                incr count -1
+        incr measurement
+                after $::timeout
+    }
+} elseif {$::action == "reset"} then {
+    resetFunc  
+} else {
+    processOneReading 1
+}
+
+if {$::html > 0} then {
+    puts "</table>"
+}
+
+

@@ -1,0 +1,47 @@
+#!/bin/bash
+#
+# script to update the active resolv.conf file to use IPsec
+# configured DNS servers if available, otherwise use DHCP
+# or statically configured servers.
+#
+IPSEC_RESOLV=/tmp/ipsec_resolv.conf
+STATIC_RESOLV=/tmp/static_resolv.conf
+DHCP_RESOLV=/tmp/dhcp_resolv.conf
+# /etc/resolv.conf is in a read-only partition so it actually points to
+# /tmp/resolv.conf - which is a symlink too..
+ETC_RESOLV=/tmp/resolv.conf
+
+if [ -f $DHCP_RESOLV ]; then
+    # default to use DHCP resolv file if present
+    ACTIVE_RESOLV=$DHCP_RESOLV
+else
+    ACTIVE_RESOLV=$STATIC_RESOLV
+fi
+
+# count number of nameservers provided by IPsec
+nscount=0
+if [ -f $IPSEC_RESOLV ]; then
+    while read line; do
+        if [ "${line:0:10}" == "nameserver" ]; then
+            let nscount=nscount+1
+        fi
+    done < $IPSEC_RESOLV
+fi
+
+# use IPsec nameserver(s) if provided
+if [ $nscount != 0 ]; then
+    ACTIVE_RESOLV=$IPSEC_RESOLV
+fi
+
+if [ ! -h $ETC_RESOLV ]; then
+    # link doesn't exist so create it (should only happen on first DHCP lease)
+    ln -sf $ACTIVE_RESOLV $ETC_RESOLV
+elif [ "`readlink $ETC_RESOLV`" != "$ACTIVE_RESOLV" ]; then
+    # exists but active has changed, update link
+    logger -p local0.notice -t vpn "updating /etc/resolv.conf to point to $ACTIVE_RESOLV"
+    # just in case it is a file rather than a link
+    [ ! -h $ETC_RESOLV ] && rm $ETC_RESOLV
+    ln -sf $ACTIVE_RESOLV $ETC_RESOLV
+fi
+
+

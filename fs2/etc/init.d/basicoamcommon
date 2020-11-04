@@ -1,0 +1,132 @@
+#!/bin/bash
+#
+# Set of common definitions for use by Basic OAM scripts
+#
+
+# uncomment to debug
+#set -v -o xtrace
+
+BASIC_OAM_CFG=/var/ipaccess/basic_oam.dat
+# default file, copy this if above is missing
+DEFAULT_BOAM_CFG=/opt/ipaccess/basic_oam.dat
+# top level basic oam control script
+WRAPPER_SCRIPT=/etc/init.d/basicoamwrapper
+# this file
+COMMON_SCRIPT=/etc/init.d/basicoamcommon
+# main control file is downloaded to here
+TARGET_FILE=/tmp/basicoam.tar.gz
+# and extracted to here
+TARGET_DIR=/tmp/basicoam
+# private key file used when connecting to a remote host - the public
+# portion of this key must be in the authorized_keys file of the host
+# we're connecting to.
+SSH_PRIVATE_KEY=/root/.ssh/id_3gap
+GETVARVAL=/opt/ipaccess/Utils/scripts/getVarVal
+SOFTWAREUPDATE=/opt/ipaccess/bin/softwareupdate
+HW_DESC=/var/ipaccess/hw_description.dat
+SW_DESC=/etc/sw_description.dat
+#AP_MAC=`ifconfig eth0 | grep HWaddr | awk '{print $5}' | tr -d :`
+RESET=reboot
+# default port for https connectivity to basicoam server
+BASIC_OAM_SERVER_PORT_DEFAULT=443
+# download client binary
+DLC=/opt/ipaccess/bin/ipacurl
+
+if [ ! -x $GETVARVAL ]; then
+    echo "BASIC_OAM: Cannot to execute getVarVal"
+    exit 100
+fi
+
+if [ ! -f $HW_DESC ]; then
+    echo "BASIC_OAM: missing file" $HW_DESC
+    exit 101
+fi
+
+if [ ! -f $SW_DESC ]; then
+    echo "BASIC_OAM: missing file" $SW_DESC
+    exit 102
+fi
+
+if [ ! -f $BASIC_OAM_CFG ]; then
+    if [ -f $DEFAULT_BOAM_CFG ]; then
+        echo "BASIC_OAM: copying default config file"
+        cp $DEFAULT_BOAM_CFG $BASIC_OAM_CFG
+    fi
+fi
+
+if [ ! -f $BASIC_OAM_CFG ]; then
+    echo "BASIC_OAM: Basic OAM config file missing: " $BASIC_OAM_CFG
+    exit 103
+else
+    BOAM_ENABLED=`$GETVARVAL $BASIC_OAM_CFG ENABLE_BASICOAM`
+    BOAM_SERVER=`$GETVARVAL $BASIC_OAM_CFG AUTOCONFIGSERVER_URL`
+    BOAM_INTERVAL=`$GETVARVAL $BASIC_OAM_CFG PERIODIC_INFORM_TIMER`
+    SSH_PRIVATE_KEY=`$GETVARVAL $BASIC_OAM_CFG SSH_PRIVATE_KEY`
+    
+    # allow config to be modified via diagnosticTuning
+    if [ "$ENV_BASICOAM_SERVER_URL" != "" ]; then
+        PROTO=`echo $ENV_BASICOAM_SERVER_URL | awk -F':' '{print $1}'`
+        if [ "$PROTO" = "https" ]; then
+            BOAM_ENABLED=1
+            BOAM_SERVER=$ENV_BASICOAM_SERVER_URL
+        else
+            echo "BASIC_OAM: Ignoring ENV_BASICOAM_SERVER_URL, only https protocol supported"
+        fi
+    fi
+
+    if [ "$ENV_BASICOAM_INTERVAL" != "" ]; then
+        if [ "$ENV_BASICOAM_INTERVAL" -ge 0 -a "$ENV_BASICOAM_INTERVAL" -le 59 ]; then
+            BOAM_INTERVAL=$ENV_BASICOAM_INTERVAL
+        fi
+    fi
+
+    if [ "$BOAM_ENABLED" == "0" ]; then
+        echo "BASIC_OAM: Basic OAM is disabled"
+        exit 0
+    fi
+
+    if [ "$BOAM_ENABLED" == "" -o "$BOAM_SERVER" == "" -o "$BOAM_INTERVAL" == "" ]; then
+        echo "BASIC_OAM: Basic OAM config file invalid: " $BASIC_OAM_CFG
+        exit 104
+    fi
+    
+    BOAM_PROTOCOL=`echo $BOAM_SERVER | awk -F':' '{print $1}'`
+    if [ "$BOAM_PROTOCOL" == "https" ]; then
+        HTTPS_SERVER_ADDR=`echo $BOAM_SERVER | awk -F'/' '{print $3}'`
+        HTTPS_SERVER_PORT=`echo $HTTPS_SERVER_ADDR | awk -F':' '{print $2}'`
+        if [ "$HTTPS_SERVER_PORT" == "" ]; then
+            # replace server ipaddr with default ipaddr:port
+            BOAM_SERVER=`echo $BOAM_SERVER | sed -e "s/$HTTPS_SERVER_ADDR/${HTTPS_SERVER_ADDR}:${BASIC_OAM_SERVER_PORT_DEFAULT}/g"`
+
+        fi
+    elif [ "$BOAM_PROTOCOL" == "http" ]; then
+            HTTPS_SERVER_ADDR=""
+    else
+        echo "BASIC_OAM: invalid AUTOCONFIGSERVER_URL value"
+        exit 105
+    fi
+fi
+
+AP_SERIAL=`$GETVARVAL $HW_DESC SERIAL_NUMBER`
+SERIAL_NUMBER=$AP_SERIAL
+AP_PARTNUM=`$GETVARVAL $HW_DESC PCB_ASSEMBLY_PART_NUM`
+# this lists the BSP version?!?!
+FS_VERSION=`$GETVARVAL $SW_DESC MAINFS_VERSION`
+#FS_VERSION=`ipkg info utils | grep Version | awk '{print $2}'`
+OS_VERSION=`uname -r | awk -F"-" '{print $4}'`
+if [ ! -f /tmp/uboot_version ]; then
+    # Scan the u-boot image, find the U-Boot version string and pick off the final field.
+    # this takes quite a while, so cache the result
+    strings </dev/mtd0 | awk '/U-Boot /{print $NF}' > /tmp/uboot_version
+fi
+UBOOT_VERSION=`cat /tmp/uboot_version`
+
+BASE_URL="${BOAM_SERVER}/inform.php?serialnumber=${AP_SERIAL}&os_version=${OS_VERSION}&fs_version=${FS_VERSION}&boot_version=${UBOOT_VERSION}&partnumber=${AP_PARTNUM}"
+
+TSTAMP=`date +%s`
+
+log_result()
+{
+    # use of -s option suppresses errors
+    ${DLC} -m 10 -s "${BASE_URL}&type=${1}&retval=${2}" -o /dev/null 
+}

@@ -1,0 +1,5 @@
+/opt/oem/diagfiles
+/opt/cisco/leds/ledsequences-281
+/opt/cisco/leds/ledsequences
+/etc/init.d/loadleds
+/etc/rcS.d/S35loadleds

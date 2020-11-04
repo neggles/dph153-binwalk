@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+# perform a hardware reset
+#
+GETVARVAL=/opt/ipaccess/Utils/scripts/getVarVal
+HW_DESC=/var/ipaccess/hw_description.dat
+
+AP_PARTNUM=`$GETVARVAL $HW_DESC PCB_ASSEMBLY_PART_NUM`
+AP_VARIANT=`echo $AP_PARTNUM | cut -c4`
+
+if [ "$AP_VARIANT" = "A" ]; then
+    # Band 1 variant (no router present - use IPA reset)
+    /opt/ipaccess/bin/reset
+else
+    # Band 2/5 or Band 4 variant (router is present - use Cisco reset)
+    /opt/cisco/reset $1
+fi

@@ -1,0 +1,10 @@
+Package: rrm-226
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 579.11.142
+Description: RRM application
+Source: ip.access
+Depends: 

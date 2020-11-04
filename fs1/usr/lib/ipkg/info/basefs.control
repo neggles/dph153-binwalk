@@ -1,0 +1,9 @@
+Package: basefs
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version:579.11.142
+Source: MKS basefs
+Description: base file system

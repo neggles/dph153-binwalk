@@ -1,0 +1,22 @@
+#!/bin/bash
+PCB_TEMP_FILE=/tmp/pcbtemperature
+
+# read temperature - note this is current temperature rather than temperature
+# when the scan was done, it's assumed the logging happens immediately 
+# following the scan.
+if [ ! -x "`which sdgpio_util`" ]; then
+    T=$(cat /sys/bus/i2c/devices/0-0048/temp?_input)
+    if [ "$T" != "" ]; then
+        BOARD_TEMP=$(echo $T 1000 | awk '{printf("%2.2f\n", $1/$2)}')
+    else
+        echo "Unable to read board temperature!"
+        exit 3
+    fi
+else
+    # read once and throw result away
+    sdgpio_util -readtemp > /dev/null
+    BOARD_TEMP=`sdgpio_util -readtemp | grep Temperature | awk '{print $2}'`
+fi
+
+echo $BOARD_TEMP > $PCB_TEMP_FILE
+echo $BOARD_TEMP

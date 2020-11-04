@@ -1,0 +1,9 @@
+Package: tcl8.4
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 8.4.14
+Description: TCL required for factory calibration etc
+Source: MKS: e:/sie/3gap/src/applications/thirdpary/expect

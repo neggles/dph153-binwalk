@@ -1,0 +1,10 @@
+Package: unsignedpki.cfg
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version: 579.11.144
+Description: ip.Access 3G Access Point software component
+Source: ip.access
+Depends: 

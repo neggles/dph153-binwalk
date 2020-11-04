@@ -1,0 +1,50 @@
+#!/bin/bash
+#
+#It will merge latest HO  HO_X_VARIABLE records into /var/ipaccess/logs/ho/hoLog.bak file
+# input filename: - file to be merged
+# input HEASERNUMLIINE: - number of lines use for header in the given file
+# input FOOTERNUMLINE: - number of lines for footer
+# input X Records: - number of lastest HO records to be merged 
+# input ho bak filename: - path for the hoLog.bak
+
+ME=`basename $0`
+
+# lower priority of this script (and its children)
+renice -n 10 $$
+FILENAME=$1
+HEADERNUMLINE=$2
+FOOTERNUMLINE=$3
+HO_X_VARIABLE=$4
+HO_BAK_FILE_NAME=$5
+START=0
+END=0
+
+echo $FILENAME
+
+COUNT=`cat $FILENAME | wc -l`
+COUNTPrev=$COUNT
+COUNT=$(($COUNT-$FOOTERNUMLINE-$HEADERNUMLINE))
+
+if [ "$COUNT" -eq "$HO_X_VARIABLE" ]; then
+    START=$HEADERNUMLINE
+    END=$(($COUNT+$HEADERNUMLINE))
+    #echo $COUNT
+    sed -n ''$START','$END'p' "$FILENAME">"$HO_BAK_FILE_NAME"
+
+elif [ "$COUNT" -gt "$HO_X_VARIABLE" ]; then
+    END=$(($COUNT+$HEADERNUMLINE))
+    START=$(($END-$HO_X_VARIABLE))
+    sed -n ''$START','$END'p' "$FILENAME">"$HO_BAK_FILE_NAME"
+else
+    START=$HEADERNUMLINE
+    END=$(($COUNT+$HEADERNUMLINE))
+    #echo $COUNT
+    sed -n ''$START','$END'p' "$FILENAME">>"$HO_BAK_FILE_NAME"
+    COUNT=`cat $HO_BAK_FILE_NAME | wc -l`
+    if [ "$COUNT" -gt "$HO_X_VARIABLE" ]; then
+        tail -"$HO_X_VARIABLE" "$HO_BAK_FILE_NAME" > "$HO_BAK_FILE_NAME".tmp
+        rm -rf "$HO_BAK_FILE_NAME"
+        mv "$HO_BAK_FILE_NAME".tmp "$HO_BAK_FILE_NAME"
+    fi    
+fi
+echo $COUNT

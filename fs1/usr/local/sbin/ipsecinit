@@ -1,0 +1,138 @@
+#!/bin/bash
+#
+# ipsecinit - helper script to setup/start/stop strongSwan
+#
+
+. /etc/init.d/functions
+
+PROG=/usr/local/sbin/ipsec
+NVBASEDIR=/var/ipaccess/config/ipsec
+NVCONFDIR=$NVBASEDIR/etc
+DEFCONFDIR=/opt/ipaccess/ipsec
+CONFIGFILES="ipsec.conf strongswan.conf"
+IPSECDIR=/tmp/ipsec/etc/ipsec.d
+CONFIGDIRS="crls reqs certs acerts aacerts ocspcerts cacerts private"
+IPSEC=/usr/local/sbin/ipsec
+CHARON_PID_FILE=/var/run/charon.pid
+STARTER_PID_FILE=/var/run/starter.pid
+CHARON_PID=`cat $CHARON_PID_FILE 2>/dev/null`
+STARTER_PID=`cat $STARTER_PID_FILE 2>/dev/null`
+BADCONFIG=0
+RETVAL=0
+
+check_config_files()
+{
+    echo -n "ipsec: config setup "
+
+    if [ ! -d $NVCONFDIR ]; then
+        mkdir -p $NVCONFDIR
+    fi
+
+    if [ ! -d $IPSECDIR ]; then
+        mkdir -p $IPSECDIR
+    fi
+    
+    if [ ! $IPSECDIR -ef $NVCONFDIR/ipsec.d ]; then
+        rm -f $NVCONFDIR/ipsec.d
+        ln -s $IPSECDIR $NVCONFDIR/ipsec.d
+    fi
+
+    for c in $CONFIGFILES; do
+        if [ ! -f $NVCONFDIR/$c ]; then
+            cp -f $DEFCONFDIR/$c /tmp/ipsec/etc
+            ln -sf /tmp/ipsec/etc/$c $NVCONFDIR
+        fi
+    done
+    
+    for d in $CONFIGDIRS; do
+        if [ ! -d $IPSECDIR/$d ]; then
+            mkdir -p $IPSECDIR/$d
+        fi
+    done
+
+    # strongSwan will complain if this doesn't exist - it will also
+    # create the file with an invalid key configured.
+    touch $NVCONFDIR/ipsec.secrets
+
+    echo "OK"
+}
+
+delete_config_files()
+{
+    echo "ipsec: deleting $NVBASEDIR"
+    rm -rf $NVBASEDIR
+}
+
+start()
+{
+    check_config_files
+    echo "ipsec: start "
+    # ensure that any previous instance has been stopped and cleaned up first
+    if [ -f $STARTER_PID_FILE -o -f $CHARON_PID_FILE ]; then
+        echo "ipsec: stopping previous instance"
+        stop
+    fi
+    $IPSEC start
+}
+
+stop()
+{
+    echo "ipsec: stop "
+    # if starter in running ask it to stop, this should also stop charon but 
+    # sometimes takes a while and can fail
+    if [ "$STARTER_PID" != "" ]; then
+        if [ -d /proc/$STARTER_PID ]; then
+            $IPSEC stop
+        fi
+        
+        # still running, kill it    
+        if [ -d /proc/$STARTER_PID ]; then
+            echo "ipsec: starter didn't exit, killing"
+            kill -9 $STARTER_PID
+        fi
+    fi
+    
+    # charon is still running, kill it
+    if [ "$CHARON_PID" != "" -a -d /proc/$CHARON_PID ]; then
+        echo "ipsec: charon didn't exit, killing"
+        kill -9 $CHARON_PID
+    fi
+    
+    rm -f $STARTER_PID_FILE
+    rm -f $CHARON_PID_FILE
+}
+
+reset()
+{
+    delete_config_files
+}
+
+restart()
+{
+    stop
+    start
+}
+
+# processing of command line
+case "$1" in
+    setup)
+        check_config_files
+        ;;
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    reset)
+        reset
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {setup|start|stop|reset|restart}"
+        exit 1
+esac
+
+exit $RETVAL

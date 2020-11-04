@@ -1,0 +1,8 @@
+Package: pc8219-312
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Version: 1.5.5RC
+Description: PicoArray image
+Source: UMTSFDD_PC8219_312_v1_5_5RC_BINARY_RELEASE.tar.bz2

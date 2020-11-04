@@ -1,0 +1,68 @@
+#!/bin/bash
+#
+# pico_status        Initialise pico_status for performing coredumpts
+# 
+#
+
+. /etc/init.d/functions
+
+PROG=pico_status
+APP=/opt/ipaccess/bin/$PROG
+RETVAL=0
+
+
+start() {
+    echo -n "Starting $PROG: "
+
+    if [ -a $APP ]; then
+        is_app_running $PROG
+        if [ $? != $TRUE ]; then
+            $APP -c -s -d /tmp/coredump.pd &
+            RETVAL=$?
+            if [ $RETVAL -eq 0 ]; then
+                echo OK
+            else
+                echo FAILURE
+            fi
+        else
+            echo "FAILURE (already running)"
+        fi
+    else
+        echo "$PROG not found"
+    fi
+}
+
+stop() {
+    echo -n "Stopping $PROG: "
+    kill -9 `pidof -o $$ -o $PPID -o %PPID $PROG` >/dev/null 2>&1
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        echo OK
+    else
+        echo FAILURE
+    fi
+}
+
+restart() {
+    stop
+    start
+    RETVAL=$?
+}
+
+# processing of command line
+case "$1" in
+    start)
+        start
+    	;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit $RETVAL

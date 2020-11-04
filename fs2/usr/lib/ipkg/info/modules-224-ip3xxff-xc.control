@@ -1,0 +1,9 @@
+Package: modules-224-ip3xxff-xc
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Arch: arm
+Version:240.0
+Source: Platform
+Description: Linux Kernel modules

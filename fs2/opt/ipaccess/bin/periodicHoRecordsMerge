@@ -1,0 +1,44 @@
+#!/bin/bash
+#
+# input file name to be merge onto flas, 2nd one to specify generic HO filename like *_ho.xml.periodic, 
+# 3rd one represents the flash path  
+
+ME=`basename $0`
+
+# lower priority of this script (and its children)
+renice -n 10 $$
+FILENAME=$1
+PERIODICFILE=$2
+FLASHPATH=$3
+FOOTERNUMLINE=
+HEADERLENGTH=
+TOTALRECORDS=1000
+
+PFILE=`ls -rt1 $FLASHPATH/*$PERIODICFILE 2>/dev/null | tail -1`
+if [ -f "$PFILE" ]; then
+    echo $PFILE
+    COUNT=`cat $PFILE | wc -l`
+    FOOTERNUMLINE=`awk '/raw/{print NR}' $PFILE  | tail -1`
+    TEMP=$(($COUNT-$FOOTERNUMLINE))
+    TEMP=$(($COUNT-$TEMP-1))    
+    cat $PFILE | head -$TEMP > $PFILE.tmp
+    rm -rf $PFILE
+    mv $PFILE.tmp $PFILE
+
+    COUNT=`cat $FILENAME | wc -l`
+    COUNT=$(($COUNT+1))
+    HEADERLENGTH=`awk '/raw/{print NR}' $FILENAME  | head -1`
+    TEMP=$(($COUNT-$HEADERLENGTH))
+    cat $FILENAME | tail -$TEMP >> $PFILE
+    echo $FILENAME
+    rm $FILENAME
+
+    COUNT=`cat $PFILE | wc -l`
+    if [ "$COUNT" -gt "$TOTALRECORDS" ]; then
+        rm -rf $PFILE 
+    fi
+else
+    CFILE=`basename $FILENAME`
+    mv $FILENAME $FLASHPATH/$CFILE.periodic
+fi  
+

@@ -1,0 +1,39 @@
+#!/bin/bash
+#
+# Basic OAM configuration setup script -
+#   Add a cron job to run basicoamwrapper
+#
+
+# uncomment to debug
+#set -v -o xtrace
+
+# Read in ENV_ variables
+[ -r /var/ipaccess/nv_env.sh ] && source /var/ipaccess/nv_env.sh
+
+source /etc/init.d/basicoamcommon
+
+# perform early startup tasks such as setting up the cron task and
+# verifying/updating stunnel config
+
+# setting the interval to 0 means boam will only run once during startup
+if [ $BOAM_INTERVAL = 0 ]; then
+    echo "BASIC_OAM: interval set to 0, skipping cron job install"
+else
+    # Randomise the periodic interval used by basicoam to query the server.
+    # Half BOAM_INTERVAL (rounded up) is used as an interval from which
+    # a random time T is selected. $WRAPPER_SCRIPT periodic T will then wait
+    # T seconds before fetching from the server
+    SLEEP_MAX=$(($BOAM_INTERVAL + 1))
+    SLEEP_MAX=$(($SLEEP_MAX / 2))
+    SLEEP_MAX=$(($SLEEP_MAX * 60))
+    # compute random time to sleep
+    SLEEP_TIME=$(($RANDOM % $SLEEP_MAX))
+
+    # ensure cron job is there and correct
+    CRON_STRING="*/$BOAM_INTERVAL * * * * sleep $SLEEP_TIME; $WRAPPER_SCRIPT periodic > /tmp/basicoam.log 2>&1"
+    TMPFILE=`mktemp /tmp/newcrontab.XXXXXX`
+    crontab -l | grep -v $WRAPPER_SCRIPT > $TMPFILE
+    echo "$CRON_STRING" >> $TMPFILE
+    crontab $TMPFILE
+    rm -f $TMPFILE
+fi

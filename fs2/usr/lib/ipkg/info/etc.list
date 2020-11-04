@@ -1,0 +1,5 @@
+/opt/ipaccess/bin/getbank
+/etc/fstab
+/etc/init.d/mountoemparts
+/etc/init.d/ubootenvcheck
+/etc/rcS.d/S03ubootenvcheck

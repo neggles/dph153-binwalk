@@ -1,0 +1,92 @@
+#!/bin/sh
+#
+# fwcontrol - helper script to add/remove iptables rules
+#
+
+ME=`basename ${0}`
+EXTIF=`cat /tmp/wanif`
+IPTABLES="/usr/sbin/iptables"
+POLICY="DROP"
+DIRECTION=
+PROTO=$2
+CONTROL=
+SRC=
+DST=
+
+usage()
+{
+    echo
+    echo "USAGE: $ME <allow|deny> <tcp port|udp port|icmp type> <port|type> <in|out> [<to|from> <ip|host>]"
+    echo "** Examples **"
+    echo " * allow inbound traffic on TCP port 80 to/from any address"
+    echo
+    echo "      $ME allow tcp 80 in"
+    echo
+    echo " * remove the above rule"
+    echo
+    echo "      $ME deny tcp 80 in"
+    echo
+    echo " * allow outbound traffic on UDP port 53 but only to 172.28.3.111"
+    echo
+    echo "      $ME allow udp 53 out to 172.28.3.111"
+    echo
+    echo " * allow inbound ICMP type 8 to/from any address"
+    echo
+    echo "      $ME allow icmp type 8 in"
+    echo
+    exit 1
+}
+
+if [ "$1" == "deny" ]; then
+    # insert new rule to deny
+    CONTROL="-I"
+elif [ "$1" == "allow" ]; then
+    # remove the rule so we hit the default policy
+    CONTROL="-D"
+else
+    echo "ERROR: unknown parameter $1 where 'allow' or 'deny' expected"
+    usage
+fi
+
+if [ "$2" == "tcp" -o "$2" == "udp" ]; then
+    if [ "$3" != "port" -o "$4" == "" ]; then
+        echo "ERROR: incorrect port specification"
+        usage
+    fi
+    for p in `echo $4 | sed -e 's/,/ /g'`; do
+        if [ $p -lt 0 -o $p -gt 65535 ]; then
+            echo "ERROR: invalid port $p"
+            usage
+        fi
+    done
+    PORTS="--dport $4"
+elif [ "$2" == "icmp" -a "$3" == "type" ]; then
+    PORTS="--icmp-type $4"
+    # TODO: check for valid ICMP types
+else
+    echo "ERROR: unknown protocol type $2, expected 'tcp' 'udp' or 'icmp'"
+    usage
+fi
+
+if [ "$5" == "in" ]; then
+    DIRECTION="INPUT -i $EXTIF"
+elif [ "$5" == "out" ]; then
+    DIRECTION="OUTPUT -o $EXTIF"
+else
+    echo "ERROR: invalid direction $5, expected 'in' or 'out'"
+    usage
+fi
+
+# look for the "to x.x.x.x" or "from x.x.x.x" and translate it
+if [ "$6" != "" -a "$7" == "" ]; then
+    echo "ERROR: missing ip or host"
+    usage
+elif [ "$6" == "from" ]; then
+    SRC="-s $7"
+elif [ "$6" == "to" ]; then
+    DST="-d $7"
+fi
+
+$IPTABLES $CONTROL $DIRECTION -p $PROTO $PORTS $SRC $DST -j $POLICY
+RETVAL=$?
+exit $RETVAL

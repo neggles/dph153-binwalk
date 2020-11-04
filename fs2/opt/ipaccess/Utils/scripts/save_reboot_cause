@@ -1,0 +1,92 @@
+#!/bin/bash
+#
+# save_reboot_cause
+#
+# script to save reboot cause to flash, run during shutdown
+#
+CAUSE=64
+REBOOT_CAUSE_TEXT=
+CAUSE_OEM=
+REBOOT_CAUSE_TEXT_OEM=
+UPTIME=$(awk -F. '{print $1}' /proc/uptime)
+# date is always logged in UTC
+TSTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+source /opt/ipaccess/Utils/scripts/reboot_cause_codes
+
+# source the reboot_cause files to populate the CAUSE_* variables
+for rc in /tmp/.reboot_cause /tmp/.reboot_cause_oem; do
+    if [ -f $rc ]; then
+        source $rc
+    fi
+done
+
+# the CAUSE (and CAUSE_OEM) variables may contain either the integer value
+# of the cause code or the textual value. No failure will be produced in we
+# are given bad input, but behaviour is sensible.
+#
+# An invalid integer causeCode will be logged as is in the causeCode field,
+# the causeText field will be "UNKNOWN".
+#
+# An invalid string causeText will be logged as is in the causeText field,
+# the causeCode field will be 64.
+#
+get_cause()
+{
+    CT=
+    CC=
+
+    if [ $1 -eq $1 2> /dev/null ]; then
+        # integer
+        CC=$1
+        CT="${REBOOT_CAUSE_CODE[$1]}"
+        if [ "$CT" = "" ]; then
+            CT="UNKNOWN"
+        fi
+    else
+        CT=$1
+        for k in ${!REBOOT_CAUSE_CODE[@]}; do
+            if [ "${REBOOT_CAUSE_CODE[$k]}" = "$1" ]; then
+                CC=$k
+                CT=$1
+                break
+            fi
+        done
+        if [ "$CC" = "" ]; then
+            CC=64
+        fi
+    fi
+}
+
+get_cause $CAUSE
+CAUSE_CODE_IPA=$CC
+CAUSE_TEXT_IPA=$CT
+
+# if an OEM cause is specified this is used in preference to
+# the internally set cause
+if [ "$CAUSE_OEM" != "" ]; then
+    get_cause $CAUSE_OEM
+    CAUSE_CODE=$CC
+    CAUSE_TEXT=$CT
+
+    # OEM cause code has been provided so place the internal cause
+    # code text in the reboot cause text field
+    RCT="$CAUSE_TEXT_IPA"
+
+    # and append the oem provided cause text too
+    if [ "$REBOOT_CAUSE_TEXT_OEM" ]; then
+        RCT="$RCT:$REBOOT_CAUSE_TEXT - OEM:$REBOOT_CAUSE_TEXT_OEM"
+    fi
+else
+    CAUSE_CODE=$CAUSE_CODE_IPA
+    CAUSE_TEXT=$CAUSE_TEXT_IPA
+    RCT=$REBOOT_CAUSE_TEXT
+fi
+
+# write out to file in flash to be checked on next boot - note that the
+# boot bank is not written here as the entry should contain the bank the
+# AP boots into following this reboot so it's appended on boot
+REBOOT_CAUSE_FILE=/var/ipaccess/logs/reboots/last_reboot_cause
+mkdir -p `dirname $REBOOT_CAUSE_FILE`
+echo -n "$CAUSE_CODE,$CAUSE_TEXT,$UPTIME,$TSTAMP,\"$RCT\"" > $REBOOT_CAUSE_FILE
+

@@ -1,0 +1,8 @@
+Package: asn1libs
+Priority: optional
+Section: misc
+Maintainer: ip.access
+Architecture: arm
+Source: MKS
+Version: 0.1
+Description: ASN.1 protocol libraries

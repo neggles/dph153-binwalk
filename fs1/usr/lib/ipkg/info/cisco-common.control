@@ -1,0 +1,8 @@
+Package: cisco-common
+Priority: optional
+Version: 1.1
+Section: misc
+Architecture: arm
+Maintainer: Cisco
+Source: loadleds
+Description: Script to adjust default LED patterns

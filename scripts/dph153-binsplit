@@ -8,17 +8,17 @@ fi
 
 FW_BIN=$1
 
-dd if=${FW_BIN} of=${FW_BIN}_fsboot.bin bs=1024 skip=0 count=256
-dd if=${FW_BIN} of=${FW_BIN}_env.bin bs=1024 skip=256 count=256
-dd if=${FW_BIN} of=${FW_BIN}_kernel1.bin bs=1024 skip=512 count=2048
-dd if=${FW_BIN} of=${FW_BIN}_kernel2.bin bs=1024 skip=2560 count=2048
-dd if=${FW_BIN} of=${FW_BIN}_config.bin bs=1024 skip=4608 count=3584
-dd if=${FW_BIN} of=${FW_BIN}_fs1.bin bs=1024 skip=8192 count=27648
-dd if=${FW_BIN} of=${FW_BIN}_fs2.bin bs=1024 skip=35840 count=27648
-dd if=${FW_BIN} of=${FW_BIN}_u-boot.bin bs=1024 skip=63488 count=384
-dd if=${FW_BIN} of=${FW_BIN}_oem_divert2.bin bs=1024 skip=63872 count=128
-dd if=${FW_BIN} of=${FW_BIN}_oem_data2.bin bs=1024 skip=64256 count=256
-dd if=${FW_BIN} of=${FW_BIN}_oem_lib1.bin bs=1024 skip=64512 count=256
-dd if=${FW_BIN} of=${FW_BIN}_oem_lib2.bin bs=1024 skip=64768 count=256
-dd if=${FW_BIN} of=${FW_BIN}_resv.bin bs=1024 skip=65024 count=256
-dd if=${FW_BIN} of=${FW_BIN}_ipa_calib.bin bs=1024 skip=65280 count=256
+dd if=${FW_BIN} of=fsboot.bin bs=1024 skip=0 count=256
+dd if=${FW_BIN} of=env.bin bs=1024 skip=256 count=256
+dd if=${FW_BIN} of=kernel1.bin bs=1024 skip=512 count=2048
+dd if=${FW_BIN} of=kernel2.bin bs=1024 skip=2560 count=2048
+dd if=${FW_BIN} of=config.bin bs=1024 skip=4608 count=3584
+dd if=${FW_BIN} of=fs1.bin bs=1024 skip=8192 count=27648
+dd if=${FW_BIN} of=fs2.bin bs=1024 skip=35840 count=27648
+dd if=${FW_BIN} of=u-boot.bin bs=1024 skip=63488 count=384
+dd if=${FW_BIN} of=oem_divert2.bin bs=1024 skip=63872 count=128
+dd if=${FW_BIN} of=oem_data2.bin bs=1024 skip=64256 count=256
+dd if=${FW_BIN} of=oem_lib1.bin bs=1024 skip=64512 count=256
+dd if=${FW_BIN} of=oem_lib2.bin bs=1024 skip=64768 count=256
+dd if=${FW_BIN} of=resv.bin bs=1024 skip=65024 count=256
+dd if=${FW_BIN} of=ipa_calib.bin bs=1024 skip=65280 count=256

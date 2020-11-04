@@ -1,5 +1,0 @@
-/usr/sbin/i2cget
-/usr/sbin/i2cset
-/usr/share/doc/i2c-tools-3.0.2/COPYING
-/usr/sbin/i2cdump
-/usr/sbin/i2cdetect

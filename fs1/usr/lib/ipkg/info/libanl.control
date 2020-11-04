@@ -1,9 +1,0 @@
-Package: libanl
-Priority: optional
-Section: misc
-Maintainer: ip.access
-Architecture: arm
-Arch: arm
-Version: 2.8-1
-Source: MKS Thirdparty 
-Description: Glibc async name lookup

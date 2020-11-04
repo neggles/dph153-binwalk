@@ -1,8 +1,0 @@
-Package: dph151-misc
-Priority: optional
-Version: 1.2.2
-Section: misc
-Architecture: arm
-Maintainer: Cisco
-Source: misc
-Description: list of additional diagnostics files for upload

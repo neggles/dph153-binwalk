@@ -1,5 +1,0 @@
-/opt/ipaccess/bin/procmon.563.21.2
-/etc/rcS.d/S85startprocmon
-/opt/ipaccess/bin/procmon
-/opt/ipaccess/procmon.conf
-/etc/init.d/startprocmon

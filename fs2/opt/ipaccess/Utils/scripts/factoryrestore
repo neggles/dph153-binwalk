@@ -1,7 +1,0 @@
-#!/bin/bash
-#
-# script to restore Factory setting on working AP.
-# Sets a flag and performs reboot.
-#
-touch /tmp/factoryrestore_flag
-/sbin/reboot

@@ -1,9 +1,0 @@
-Package: tacisco
-Priority: optional
-Section: misc
-Maintainer: ip.access
-Architecture: arm
-Arch: arm
-Version: 563.21.2
-Description: ip.Access 3G Access Point Trust Anchors
-Source: ip.access

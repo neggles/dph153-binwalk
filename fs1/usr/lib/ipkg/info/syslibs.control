@@ -1,9 +1,0 @@
-Package: syslibs
-Priority: optional
-Section: system
-Maintainer: ip.access
-Architecture: arm
-Arch: arm
-Version:563.21.2
-Source: toolchain
-Description: System libraries, libc, libpthread etc

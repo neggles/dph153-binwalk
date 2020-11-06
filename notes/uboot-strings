@@ -1,0 +1,862 @@
+'p@-
+UUUU
+ p@-
+TSIL
+0C2$p
+0C2|
+a < 
+;p@-
+pc302_gpio_init
+pc302gpio_pai_muxing
+pc302gpio_pin_to_block_pin
+pc302_gpio_configure_dac
+pc302gpio_get_pin_type
+pc302gpio_arm_get_value
+pc302gpio_sd_get_value
+pc302gpio_set_value
+pc302gpio_arm_set_value
+pc302gpio_sd_set_value
+pc302gpio_set_direction
+pc302gpio_arm_set_direction
+pc302gpio_sd_set_direction
+U-Boot 1.3.4 (Dec 18 2012 - 14:58:17) ip302ff-a-180.0.8583.1
+ n;^
+Qkkbal
+i]Wb
+9a&g
+MGiI
+wn>Jj
+#.zf
++o*7
+spi_cs_deactivate
+spi_cs_activate
+spi_release_bus
+spi_claim_bus
+spi_setup_slave
+spi_xfer
+pin out of range !
+value out of range !
+Can't initialise the gpio library !
+Can't request gpio pin %d !
+Can't set gpio pin %d as an output !
+Can't set value of gpio pin %d !
+Usage:
+gpioset
+gpioset - set a gpio pin high or low
+pin value - 'pin' is the gpio pin to set
+                    'value' is 1 or 0
+%s : failed to wake up the AXI2PICO block.
+%s : failed to wake up the PAI block.
+%s : failed to read from the PAI io_ctrl register.
+%s : failed to write to the PAI io_ctrl register.
+%s : pc302gpio: out of range gpio for pai muxing.
+BUG: failure at %s:%d/%s()!
+pc302_gpio.c
+BUG!
+%s : failed to read config register for SDGPIO                 pin %u
+%s : failed to write config register for SDGPIO                 pin %u
+%s : failed to read SDGPIO control value register
+%s : failed to write control value register for SDGPIO                 pin %u
+%s : failed to write analogue rate register for SDGPIO                 pin %u
+%s : cannot set value of ARM GPIO pin (%d)
+%s : failed to read SDGPIO input value reg
+%s : failed to read the analogue value register for SDGPIO pin %u
+%s : ret = %d
+%s : failed to read SDGPIO output value reg
+%s : failed to output control register for SDGPIOpin %u
+%s : failed to write analogue value register for SDGPIO pin %u
+%s : cannot set direction of ARM GPIO pin (%d)
+### ERROR ### Please RESET the board ###
+DRAM:  
+baudrate
+Flash: 
+ipaddr
+ethaddr
+loadaddr
+bootfile
+Net:   
+.%03ld
+pc : [<%08lx>]	   lr : [<%08lx>]
+sp : %08lx  ip : %08lx	 fp : %08lx
+r10: %08lx  r9 : %08lx	 r8 : %08lx
+r7 : %08lx  r6 : %08lx	 r5 : %08lx  r4 : %08lx
+r3 : %08lx  r2 : %08lx	 r1 : %08lx  r0 : %08lx
+Flags: %c%c%c%c
+  IRQs %s  FIQs %s  Mode %s%s
+Resetting CPU ...
+fast interrupt request
+not used
+data abort
+prefetch abort
+software interrupt
+undefined instruction
+USER_26
+FIQ_26
+IRQ_26
+SVC_26
+UK4_26
+UK5_26
+UK6_26
+UK7_26
+UK8_26
+UK9_26
+UK10_26
+UK11_26
+UK12_26
+UK13_26
+UK14_26
+UK15_26
+USER_32
+FIQ_32
+IRQ_32
+SVC_32
+UK4_32
+UK5_32
+UK6_32
+ABT_32
+UK8_32
+UK9_32
+UK10_32
+UND_32
+UK12_32
+UK13_32
+UK14_32
+SYS_32
+none
+%d.%d.%d.%d
+## Warning: gatewayip needed but not set
+bad length %d < %d
+invalid RARP header
+len bad %d < %d
+checksum bad
+ ICMP Host Redirect to 
+netretry
+once
+ARP Retry count exceeded; starting again
+gatewayip
+netmask
+nvlan
+serverip
+*** ERROR: ping address not given
+*** ERROR: `serverip' not set
+*** ERROR: `ipaddr' not set
+*** ERROR: No ethernet found.
+*** ERROR: `ethaddr' not set
+*** ERROR: `eth%daddr' not set
+Using %s device
+Abort
+Bytes transferred = %ld (%lx hex)
+filesize
+fileaddr
+octet
+timeout
+blksize%c%d%c
+File too large
+File has bad magic
+%02lX%02lX%02lX%02lX.img
+*** Warning: no boot file name; using '%s'
+TFTP from server 
+; our IP address is 
+; sending through gateway 
+Filename '%s'.
+ Size is 0x%x Bytes = 
+Load address: 0x%lx
+Loading: *
+Retry count exceeded; starting again
+blksize
+	 %lu MB received
+TFTP error: First block is not block 1 (%ld)
+Starting again
+done
+TFTP error: '%s' (%d)
+*** WARNING: %s is too long (%d - max: %d) - truncated
+BOOTP broadcast %d
+Host Name
+Root Path
+NIS Domain Name
+autoload
+RARP broadcast %d
+unknown
+ethact
+ethrotate
+ethprime
+ [PRIME]
+eth%daddr
+Warning: %s MAC addresses don't match:
+Address in SROM is         %02X:%02X:%02X:%02X:%02X:%02X
+Address in environment is  %02X:%02X:%02X:%02X:%02X:%02X
+CFI conformant
+CFI: Unknown command set 0x%x
+%d erase regions found, only %d used
+ERROR: too many flash sectors
+## Unknown FLASH on Bank %d - Size = 0x%08lx = %ld MB
+Flash %s timeout at address %lx data %lx
+Flash %s error at address %lx
+Command Sequence Error.
+Block Erase Error.
+Locking Error
+Block locked.
+Vpp Low Error.
+write to buffer
+buffer write
+missing or unknown FLASH type
+%s FLASH (%d x %d)
+  Size: %ld kB in %d Sectors
+  Size: %ld MB in %d Sectors
+Intel Prog Regions
+Intel Standard
+Intel Extended
+AMD Standard
+AMD Extended
+Unknown (%d)
+ command set, Manufacturer ID: 0x%02X, Device ID: 0x%02X
+%04X
+  Erase timeout: %ld ms, write timeout: %ld ms
+  Buffer write timeout: %ld ms, buffer size: %d bytes
+  Sector Start Addresses:
+  %08lX %c %s 
+Can't erase unknown flash type - aborted
+- no sectors to erase
+- Warning: %d protected sectors will not be erased!
+erase
+ done
+** Too many args (max. %d) **
+## Error: "%s" not defined
+## Command too long!
+Unknown command '%s' - try 'help'
+%.*s
+impossible condition #876
+bootcount
+bootlimit
+bootdelay
+Warning: Bootlimit (%u) exceeded. Using altbootcmd.
+altbootcmd
+Hit any key to stop autoboot: %2d 
+%2d 
+%-12s= 0x%08lX
+arch_number
+env_t
+boot_params
+DRAM bank
+-> start
+-> size
+ethaddr     =
+%c%02X
+ip_addr     = 
+baudrate    = %d bps
+bdinfo
+bdinfo  - print Board Info structure
+## Starting application at 0x%08lX ...
+## Application terminated, rc = 0x%lX
+go      - start application at address 'addr'
+addr [arg ...]
+    - start application at address 'addr'
+      passing 'arg' as arguments
+reset
+reset   - Clear bootcount, and perform RESET of the CPU
+## Checking Image at %08lx ...
+   Legacy image found
+   Bad Magic Number
+   Bad Header Checksum
+   Verifying Checksum ... 
+   Bad Data CRC
+Unknown image format!
+verify
+## Booting kernel from Legacy Image at %08lx ...
+Unsupported Architecture 0x%x
+Wrong Image Type for %s command
+Wrong Image Format for %s command
+ERROR: can't get kernel image!
+ERROR: unknown image format type!
+   XIP %s ... 
+   Loading %s ... 
+   Uncompressing %s ... 
+GUNZIP: uncompress or overwrite error - must RESET board to recover
+Unimplemented compression type %d
+WARNING: legacy format multi component image overwritten
+ERROR: new format image overwritten - must RESET the board to recover
+bootargs
+console=
+%s %s
+## Transferring control to NetBSD stage-2 loader (at address %08lx) ...
+## Transferring control to RTEMS (at address %08lx) ...
+bootm
+bootm   - boot application image from memory
+[addr [arg ...]]
+    - boot application image stored in memory
+	passing arguments 'arg ...'; when booting a Linux kernel,
+	'arg' can be the address of an initrd image
+iminfo
+iminfo  - print header information for application image
+addr [addr ...]
+    - print header information for application image starting at
+      address 'addr' in memory; this includes verification of the
+      image contents (magic number, header and payload checksums)
+Error: end address not on sector boundary
+Error: end sector precedes start sector
+Error: start address not on sector boundary
+Error: cannot span across banks when they are mapped in reverse order
+%sProtected %d sectors
+Error: start and/or end address not on sector boundary
+Error: end address (0x%08lx) not in flash!
+%sProtect Flash Bank # %ld
+Bad sector specification
+%sProtect Flash Sectors %d-%d in Bank # %zu
+Only FLASH Banks # 1 ... # %d supported
+Bad address format
+Erased %d sectors
+Erase Flash Bank # %ld 
+Erase Flash Sectors %d-%d in Bank # %zu 
+Bank # %ld: 
+flinfo
+flinfo  - print FLASH memory information
+    - print information for all FLASH memory banks
+flinfo N
+    - print information for FLASH memory bank # N
+erase   - erase FLASH memory
+start end
+    - erase FLASH from addr 'start' to addr 'end'
+erase start +len
+    - erase FLASH from addr 'start' to the end of sect w/addr 'start'+'len'-1
+erase N:SF[-SL]
+    - erase sectors SF-SL in FLASH bank # N
+erase bank N
+    - erase FLASH bank # N
+erase all
+    - erase all FLASH banks
+protect
+protect - enable or disable FLASH write protection
+on  start end
+    - protect FLASH from addr 'start' to addr 'end'
+protect on start +len
+    - protect FLASH from addr 'start' to end of sect w/addr 'start'+'len'-1
+protect on  N:SF[-SL]
+    - protect sectors SF-SL in FLASH bank # N
+protect on  bank N
+    - protect FLASH bank # N
+protect on  all
+    - protect all FLASH banks
+protect off start end
+    - make FLASH from addr 'start' to addr 'end' writable
+protect off start +len
+    - make FLASH from addr 'start' to end of sect w/addr 'start'+'len'-1 wrtable
+protect off N:SF[-SL]
+    - make sectors SF-SL writable in FLASH bank # N
+protect off bank N
+    - make FLASH bank # N writable
+protect off all
+    - make all FLASH banks writable
+Base Address: 0x%08lx
+CRC32 for %08lx ... %08lx ==> %08lx
+Testing %08x ... %08x:
+Iteration: %6d
+FAILURE (data line): expected %08lx, actual %08lx
+FAILURE (data line): Is %08lx, should be %08lx
+FAILURE: Address bit stuck high @ 0x%.8lx: expected 0x%.8lx, actual 0x%.8lx
+FAILURE: Address bit stuck low or shorted @ 0x%.8lx: expected 0x%.8lx, actual 0x%.8lx
+FAILURE (read/write) @ 0x%.8lx: expected 0x%.8lx, actual 0x%.8lx)
+FAILURE (read/write): @ 0x%.8lx: expected 0x%.8lx, actual 0x%.8lx)
+Zero length ???
+Copy to Flash... 
+word at 0x%08lx (0x%08lx) != word at 0x%08lx (0x%08lx)
+halfword at 0x%08lx (0x%04x) != halfword at 0x%08lx (0x%04x)
+byte at 0x%08lx (0x%02x) != byte at 0x%08lx (0x%02x)
+byte
+halfword
+Total of %ld %s%s were the same
+%08lx:
+ %08x
+ %04x
+ %02x
+md	 - memory display
+[.b, .w, .l] address [# of objects]
+	  - memory display
+mm	 - memory modify (auto-incrementing)
+[.b, .w, .l] address
+    - memory modify, auto increment address
+nm	 - memory modify (constant address)
+[.b, .w, .l] address
+    - memory modify, read and keep address
+mw	 - memory write (fill)
+[.b, .w, .l] address value [count]
+	 - write memory
+cp	 - memory copy
+[.b, .w, .l] source target count
+    - copy memory
+cmp	 - memory compare
+[.b, .w, .l] addr1 addr2 count
+    - compare memory
+crc32
+crc32	 - checksum calculation
+address count [addr]
+    - compute CRC32 checksum [save at addr]
+base
+base	 - print or set address offset
+    - print address offset for memory commands
+base off
+    - set address offset for memory commands to 'off'
+loop
+loop	 - infinite loop on address range
+[.b, .w, .l] address number_of_objects
+    - loop on a set of addresses
+mtest
+mtest	 - simple RAM test
+[start [end [pattern]]]
+    - simple RAM read/write test
+ping failed; host %s is not alive
+host %s is alive
+hostname
+rootpath
+dnsip
+domain
+autostart
+Automatic boot of image at addr 0x%08lX ...
+bootp
+bootp	- boot image via network using BootP/TFTP protocol
+[loadAddress] [bootfilename]
+tftpboot
+tftpboot- boot image via network using TFTP protocol
+[loadAddress] [[hostIPaddr:]bootfilename]
+rarpboot
+rarpboot- boot image via network using RARP/TFTP protocol
+ping
+ping	- send ICMP ECHO_REQUEST to network host
+pingAddress
+Saving Environment to %s...
+## Error: illegal character '=' in variable name "%s"
+stdin
+stdout
+stderr
+Can't delete "%s"
+## Baudrate %d bps not supported
+## Switch baudrate to %d bps and press ENTER ...
+## Error: environment overflow, "%s" deleted
+setenv
+ ** Abort
+Environment size: %d/%ld bytes
+printenv
+printenv- print environment variables
+    - print values of all environment variables
+printenv name ...
+    - print value of environment variable 'name'
+setenv  - set environment variables
+name value ...
+    - set environment variable 'name' to 'value ...'
+setenv name
+    - delete environment variable 'name'
+saveenv
+saveenv - save environment variables to persistent storage
+run     - run commands in an environment variable
+var [...]
+    - run the commands in the environment variable(s) 'var'
+- No help available.
+Unknown command '%s' - try 'help' without arguments for list of all known commands
+version
+version - print monitor version
+test    - minimal test like /bin/sh
+[args..]
+    - test functionality
+exit
+exit    - exit script
+    - exit functionality
+help
+help    - print online help
+[command ...]
+    - show help information (for 'command')
+'help' prints online help for the monitor commands.
+Without arguments, it prints a short usage message for all commands.
+To get detailed help information for specific commands you can type
+'help' with one or more command names as arguments.
+?       - alias for 'help'
+silent
+In:    
+No input devices available!
+Out:   
+No output devices available!
+Err:   
+No error devices available!
+Cannot initialize the list of devices!
+serial
+*** Warning - bad CRC, using default environment
+Converting old environment
+*** Warning - some problems detected reading environment; recovered successfully
+Erasing Flash...
+Writing to Flash... 
+Flash
+Timeout writing to Flash
+Flash not Erased
+Can't write to protected Flash sectors
+Outside available Flash
+Start and/or end address not on sector boundary
+Unknown Vendor of Flash
+Unknown Type of Flash
+General Flash Programming Error
+%s[%d] FIXME: rc=%d
+flash.c
+HUSH_VERSION
+0.01
+syntax error
+ERROR : memory not allocated
+*?[\
+ERROR: There is a global environment variable with the same name.
+%s: readonly variable
+\$'"
+;&|#
+;$&|
+exit not allowed from main input shell.
+<INTERRUPT>
+Unknown command '%s' - try 'help' or use 'run' command
+then
+elif
+else
+while
+until
+done
+probe
+Failed to initialize SPI flash at %u:%u
+%u KiB %s at %u:%u is now current device
+Usage: sf probe [bus:]cs [hz] [mode]
+No SPI flash selected. Please run `sf probe'
+read
+Failed to map physical memory
+SPI flash %s failed
+Usage: sf %s addr offset len
+Usage: sf erase offset len
+sf	- SPI flash sub-system
+probe [bus:]cs [hz] [mode]	- init flash device on given SPI bus
+				  and chip select
+sf read addr offset len 	- read `len' bytes starting at
+				  `offset' to memory at `addr'
+sf write addr offset len	- write `len' bytes from memory
+				  at `addr' to flash at `offset'
+sf erase offset len		- erase `len' bytes from `offset'
+Unknown OS
+Unknown Architecture
+Unknown Image
+Unknown Compression
+bootm_size
+bootm_low
+%d Bytes = 
+%sImage Name:   %.*s
+%sImage Type:   
+%s %s %s (%s)
+%sData Size:    
+%sLoad Address: %08x
+%sEntry Point:  %08x
+%sContents:
+%s   Image %d: 
+%s    Offset = 0x%08lx
+## Loading init Ramdisk from Legacy Image at %08lx ...
+No Linux %s Ramdisk Image
+Wrong Ramdisk Image Format
+## Loading init Ramdisk from multi component Legacy Image at %08lx ...
+uncompressed
+bzip2
+bzip2 compressed
+gzip
+gzip compressed
+Invalid Image
+filesystem
+Filesystem Image
+firmware
+Firmware
+kernel
+Kernel Image
+multi
+Multi-File Image
+ramdisk
+RAMDisk Image
+script
+Script
+standalone
+Standalone Program
+flat_dt
+Flat Device Tree
+Invalid ARCH
+alpha
+Alpha
+Intel x86
+ia64
+IA64
+m68k
+M68K
+microblaze
+MicroBlaze
+mips
+MIPS
+mips64
+MIPS 64 Bit
+nios
+NIOS
+nios2
+NIOS II
+powerpc
+PowerPC
+s390
+IBM S390
+SuperH
+sparc
+SPARC
+sparc64
+SPARC 64 Bit
+blackfin
+Blackfin
+avr32
+AVR32
+Invalid OS
+linux
+Linux
+netbsd
+NetBSD
+rtems
+RTEMS
+u-boot
+U-Boot
+Error: Bad gzipped data
+Error: gunzip out of data in header
+Error: inflateInit2() returned %d
+Error: inflate() returned %d
+Build: ip.access ip302ff 
+Device: 
+PC302 Rev %04d
+PC312 Rev %04d
+Unknown !
+raise: Signal # %d caught
+ENABLED
+DISABLED
+Supervisor
+User
+System
+??????
+ARM CPSR=0x%08lx (IRQ=%s, FIQ=%s, Thumb=%s, Mode=%s)
+ARM CP15: Control (1)=0x%08lx  (I-Cache=%s, D-Cache=%s, MMU=%s)
+AXI 
+pico
+SDRAM_arb_group_%d_Slot_%d = %s-%s,%s-%s,%dacc
+Buff0
+Buff1
+SRAM_arb_Slot_%d = %s-%s,%s-%s,%dacc,%s
+SDRAM Setup: 0x%04x
+SDRAM Refresh Rate: 0x%04x
+SDRAM Mode: 0x%04x
+SDRAM EMRS: 0x%04x
+SDRAM EMRS2: 0x%04x
+SDRAM EMRS3: 0x%04x
+Usage:
+%s%s
+Writes
+Reads 
+%-6s (0x%08lx): %10ld %s in %6ld ms. Throughput= %3ld.%02ld Mbps
+0x%08lX
+validate_app
+## Attempting verify image @%s with app @0x%08lX...
+Validation failed with rc=%ld
+No valid kernel images found!
+green
+sdram
+sram
+Enabling I-Cache
+WARNING: PIT looks likes it has wrapped!
+Disabling I-Cache
+TickCount=0x%08lx
+Flash WRITING not (yet) supported!
+FLASH: No accesses - oops!
+FLASH
+SDRAM: No accesses - oops!
+SDRAM
+SRAM: No accesses - oops!
+SRAM
+full
+flash
+Bad memory type
+Bad access type (r or w)
+Bad number of arguments
+Bad memory type - coding error!
+Bad milliseconds for test parameter - using %d
+ERROR: Failed to detect end of timer count period within a reasonable length of time!
+LED should have been turned on for %dms (use scope to check!)
+timcal
+timcal  - calibrate timing (via LED and using scope)
+  args: <N> - number of milliseconds to drive LED high (beware arithmetic rounding issues!)
+memcal
+memcal  - calibrate memory read or write timing (assumes timing calibrated successfully - see timcal)
+  args: [sdram | sram | flash] [r | w] - type of memory + read or write
+memcfg
+memcfg  - report ARM/PC202 configuration affecting memory access speed
+memarb
+memarb  - report/change SDRAM/SRAM arbitration scheme
+  args: [sdram<n>] [sram<m>] where:-
+    sdram<n> configures SDRAM config number n
+          0 => just ARM access
+          1 => ARM + pico equal access
+          2 => ARM (deterministic) + pico (opportunistic) access
+          3 => ARM (opportunistic) + pico (opportunistic) access
+          4 => just ARM access - all 8 groups
+    sram<m> configures SRAM config number m
+          0 => just ARM access
+          1 => ARM + pico equal access
+          2 => ARM (deterministic) + pico (opportunistic) access
+set_led
+set_led - change colour of Sys/Pwr LED
+  args: [red | green]
+%2ld
+.%ld
+ %cB%s
+ERROR: Failed to allocate 0x%lx bytes below 0x%lx.
+0123456789abcdefghijklmnopqrstuvwxyz
+0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ
+<NULL>
+unknown compression method
+invalid window size
+invalid reserved bit
+incorrect header check
+invalid block type
+invalid stored block lengths
+too many length or distance symbols
+oversubscribed dynamic bit lengths tree
+incomplete dynamic bit lengths tree
+invalid bit length repeat
+oversubscribed literal/length tree
+incomplete literal/length tree
+invalid distance code
+invalid literal/length code
+incorrect data check
+0.95P
+stream end
+file error
+stream error
+data error
+insufficient memory
+buffer error
+pc302_emac
+frame error
+%s: Auto-Negotiation complete
+%s: Link up
+%s: Link down !
+%s: 100Mbit/s
+%s: 10Mbit/s
+%s: Full-duplex mode
+%s: Half-duplex mode
+machid
+Could not find kernel entry point!
+Using machid 0x%x from environment
+Starting kernel ...
+M25P05-A
+M25P16
+M25P20
+M25P32
+M25P40
+M25P64
+M25P80
+M25P128
+S25FL008A
+S25FL016A
+S25FL032A
+S25FL064A
+S25FL128P_64K
+S25FL128P_256K
+EN25F05
+Oops, bad handle passed in, File: %s, Function: %s, Line: %d
+spi.c
+Oops, SPI 'bus' out of range. (We only have %d SPI bus(ses) available).
+Oops, SPI 'cs' out of range. (We only have %d 'cs' available).
+Oops, SPI bus 'hz' out of range. (Min = %d Hz, Max = %d Hz).
+Oops, SPI 'mode' out of range. (We only support SPI 'mode' %d).
+Oops, memory allocation error, File: %s, Function: %s, Line: %d
+        
+bootcmd=run bootflash
+ramboot=setenv bootargs root=/dev/ram rw console=$consoledev,$baudrate $othbootargs;tftp $ramdiskaddr $ramdiskfile;tftp $loadaddr $bootfile;bootm $loadaddr $ramdiskaddr
+nfsboot=setenv bootargs root=/dev/nfs rw nfsroot=$serverip:$rootpath ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:any console=$consoledev,$baudrate $othbootargs;bootm $kernel_flash_addr
+bootdelay=5
+baudrate=115200
+ethaddr=00:02:95:FF:FD:FD
+ipaddr=172.28.11.254
+serverip=172.28.1.211
+rootpath=/exports/home/nm1/pc7302_test
+gatewayip=172.28.0.254
+netmask=255.255.0.0
+hostname=ip302ff
+bootfile=uImage-pc7302_test
+loadaddr=0x00200000
+othbootargs=panic=1 
+netdev=eth0
+consoledev=/dev/null
+bootlimit=4
+kernel_nand_offset=0x00100000
+mtdparts=physmap-flash.0:384K@0x03e00000(uBoot),256K@0x40000(env),2M(kernel1),2M(kernel2),3584K(config),27M(FS1),27M(FS2),256K@0(fsboot),128K@0x03e60000(oem_divert2),256K(oem_data1),256K(oem_data2),256K(oem_lib1),256K(oem_lib2),256K(resv),256K(ipa_calib)
+nfs_args=setenv bootargs root=/dev/nfs rw nfsroot=$serverip:$rootpath ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:any console=$consoledev,$baudrate $othbootargs mtdparts=$mtdparts;
+fixed_nfs=run nfs_args; tftp; bootm
+nand_jffs2=run nand_jffs2_args; nboot $loadaddr 0 $kernel_nand_offset; bootm $loaddddr
+nand_jffs2_args=setenv bootargs root=/dev/mtdblock6 rw rootfstype=jffs2 ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:any console=$consoledev,$baudrate $othbootargs;
+flash_args=setenv bootargs root=$rootdev ro rootfstype=cramfs,jffs2 ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:any console=$consoledev,$baudrate $othbootargs mtdparts=$mtdparts;
+set_args_1=setenv kernel_addr 0x40080000; setenv rootdev /dev/mtdblock5
+set_args_2=setenv kernel_addr 0x40280000; setenv rootdev /dev/mtdblock6
+check_bank=if test -z $bank; then setenv bank 1; fi
+bootflash=run check_bank; if test $bank -eq 1; then run set_args_1; else run set_args_2; fi; run flash_args; bootm $kernel_addr || run altbootcmd
+altbootcmd=run check_bank; if test $bank -eq 1; then run set_args_2; else run set_args_1; fi; run flash_args; bootm $kernel_addr || set_led red
+silent=on
+                                    
+(((((
+AAAAAA
+BBBBBB
+Cp@-
+pksU
+seyU!onUi
+BE6&x
+yHt7
+M]I=
+N lS
+t7og
+>%qxP
+Must specify base address of image!
+Invalid base address
+sha1
+Failed to read meta data from %p
+Bad TAR length %ld
+failed to import ta #%d: %s
+Imported key #%d
+Verify signature #%d with key #%d
+Verified signature #%d with key #%d
+Verify failed signature #%d with key #%d (err=%d stat=%d: %s)
+No signatures found
+Verify FUSE is not enabled - booting
+abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq
+TomsFastMath
+Invalid error code.
+CRYPT_OK
+CRYPT_ERROR
+Non-fatal 'no-operation' requested.
+Invalid keysize for block cipher.
+Invalid number of rounds for block cipher.
+Algorithm failed test vectors.
+Buffer overflow.
+Invalid input packet.
+Invalid number of bits for a PRNG.
+Error reading the PRNG.
+Invalid cipher specified.
+Invalid hash specified.
+Invalid PRNG specified.
+Out of memory.
+Invalid PK key or key type specified for function.
+A private PK key is required.
+Invalid argument provided.
+File Not Found
+Invalid PK type.
+Invalid PK system.
+Duplicate PK key found on keyring.
+Key not found in keyring.
+Invalid sized parameter.
+Invalid size for prime.
+0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+/
+file/rmm-224F007_579.11.144C900_97
+00:03:15
+13/09/16
+579.11.144C900_97
+00:03:14
+13/09/16
+uboot_image_unsigned
+16:56:52
+03/05/16
+jenkins
+180.0.8583.1
+224_001

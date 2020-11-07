@@ -33,6 +33,6 @@ serverip=192.168.1.10
 bootfile=224_009_197.0.bin
 rootpath=/opt/ipaccess/W3GFP103/224A_manuf_013_491.15.0,nolock,retran=10,tcp
 MANUFTEST=FALSE
-bootdelay=10
+bootdelay=100
 consoledev=/dev/console
 bank=2

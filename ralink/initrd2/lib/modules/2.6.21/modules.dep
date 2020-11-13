@@ -1,0 +1,8 @@
+/lib/modules/2.6.21/kernel/drivers/gemtek/dhcpd/dhcpd.ko: 
+/lib/modules/2.6.21/kernel/drivers/gemtek/hello/busy.ko: 
+/lib/modules/2.6.21/kernel/arch/mips/rt2880/rt_timer.ko: 
+/lib/modules/2.6.21/kernel/drivers/char/hw_random/rng-core.ko: 
+/lib/modules/2.6.21/kernel/drivers/gemtek/eth_led/eth_led.ko: 
+/lib/modules/2.6.21/kernel/drivers/gemtek/watch_dog/watch_dog.ko: 
+/lib/modules/2.6.21/kernel/drivers/net/raeth/raeth.ko: 
+/lib/modules/2.6.21/kernel/drivers/gemtek/hello/hello.ko: 
